@@ -118,12 +118,9 @@ implementation{
             }
             i++;
         }while(i<HASH_MAX_SIZE);
-        if(removed)
-    {
-        removeFromKeyList(k);
-    }
-
-
+        if(removed) {
+            removeFromKeyList(k);
+        }
     }
 
 
@@ -168,5 +165,25 @@ implementation{
 
     command uint16_t Hashmap.size(){
         return numofVals;
+    }
+
+    // Clear all entries in the hashmap
+    command void Hashmap.clear(){
+        uint16_t i;
+        dbg(HASHMAP_CHANNEL, "Clearing hashmap...\n");
+
+        // Reset each entry in the hashmap
+        for(i = 0; i < HASH_MAX_SIZE; i++) {
+            map[i].key = EMPTY_KEY;
+        }
+
+        // Reset the keys list and numofVals
+        for(i = 0; i < numofVals; i++) {
+            keys[i] = EMPTY_KEY;
+        }
+
+        numofVals = 0;
+
+        dbg(HASHMAP_CHANNEL, "Hashmap cleared!\n");
     }
 }
