@@ -87,7 +87,7 @@ implementation{
 
         makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
 
-        // call Sender.send(sendPackage, destination);      //might be redundant
+        call Sender.send(sendPackage, destination);
         call Flood.ping(destination, payload);
     }
 
