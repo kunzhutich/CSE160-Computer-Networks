@@ -57,10 +57,10 @@ implementation {
         bool isActive;
         
         if(ndMsg->protocol == PROTOCOL_PING && ndMsg->TTL > 0) {
-            dbg(NEIGHBOR_CHANNEL, "BEFORE: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
+            // dbg(NEIGHBOR_CHANNEL, "BEFORE: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
             ndMsg->dest = ndMsg->src;
-            ndMsg->src = TOS_NODE_ID; // 
-            dbg(NEIGHBOR_CHANNEL, "AFTER: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
+            ndMsg->src = TOS_NODE_ID; 
+            // dbg(NEIGHBOR_CHANNEL, "AFTER: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
             // ndMsg->TTL -= 1; // decrements time to live
             ndMsg->protocol = PROTOCOL_PINGREPLY;
 
@@ -76,19 +76,6 @@ implementation {
             //     call ndMap.insert(ndMsg->src, ndMsg->TTL);
             // }
             // call NDisc.print();
-
-
-            // GETTING RID of below bc we dont use neighborData no more
-            // if (call ndMap.contains(ndMsg->src)) {
-            //     // Retrieve the existing neighbor data
-            //     data = call ndMap.get(ndMsg->src);
-            // } else {
-            //     // Initialize new neighbor data for a new neighbor
-            //     data.totalPacketsSent = 0;
-            //     data.totalPacketsReceived = 0;
-            //     data.missedResponses = 0;
-            //     data.isActive = TRUE;
-            // }
 
             if (call ndMap.contains(ndMsg->src)) {
                 packedData = call ndMap.get(ndMsg->src);
@@ -179,7 +166,7 @@ implementation {
         bool isActive;
 
         uint8_t payload = 0;
-        
+
         // Check the status of each neighbor
         for (i = 0; i < call ndMap.size(); i++) {
             if (keys[i] != 0) {
@@ -190,8 +177,12 @@ implementation {
                     isActive = FALSE;
                     dbg(NEIGHBOR_CHANNEL, "Neighbor %d is inactive, removing from table.\n", keys[i]);
                     call ndMap.remove(keys[i]);
+
+                    dbg(NEIGHBOR_CHANNEL, "Printing Neighbors again after removing a neighbor.\n");
+                    call NDisc.print();
                 } else {
                     missedResponses++;
+                    totalPacketsSent++;
                     packedData = packNeighborData(totalPacketsSent, totalPacketsReceived, missedResponses, isActive);
                     call ndMap.insert(keys[i], packedData);
                 }
