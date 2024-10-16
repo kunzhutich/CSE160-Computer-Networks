@@ -3,5 +3,4 @@ interface NDisc {
     command void stop();
     command void nDiscovery(pack* ndMsg); 
     command void print();
-    
 }

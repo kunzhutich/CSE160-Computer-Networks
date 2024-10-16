@@ -69,8 +69,9 @@ implementation{
         pack* myMsg = (pack*) payload;
         if(len!=sizeof(pack)) {
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
+            dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
-        } else if(myMsg->dest == 0) {
+        } else if(myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
             call NDisc.nDiscovery(myMsg);
         } else {
             call Flood.flood(myMsg);

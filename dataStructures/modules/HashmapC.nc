@@ -54,15 +54,15 @@ implementation{
             if(map[j].key==EMPTY_KEY || map[j].key==k){
                 // If the key is empty, we can add it to the list of keys and increment
                 // the total number of values we have..
-            if(map[j].key==EMPTY_KEY){
-                keys[numofVals]=k;
-                numofVals++;
-            }
+                if(map[j].key==EMPTY_KEY){
+                    keys[numofVals]=k;
+                    numofVals++;
+                }
 
-            // Assign key and input.
-            map[j].value=input;
-            map[j].key = k;
-            return;
+                // Assign key and input.
+                map[j].value=input;
+                map[j].key = k;
+                return;
             }
             i++;
         // This will allow a total of HASH_MAX_SIZE misses. It can be greater,

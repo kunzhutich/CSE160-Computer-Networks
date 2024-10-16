@@ -4,7 +4,6 @@
 #include "../../includes/packet.h"
 configuration NDiscC {
     provides interface NDisc;
-    
 }
 
 
@@ -21,5 +20,4 @@ implementation {
     // Use data structure for neighbor list
     components new HashmapC(uint32_t, 20) as HashMap;
     NDiscP.ndMap -> HashMap;
-    
 }
