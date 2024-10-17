@@ -61,21 +61,14 @@ implementation {
             ndMsg->dest = ndMsg->src;
             ndMsg->src = TOS_NODE_ID; 
             // dbg(NEIGHBOR_CHANNEL, "AFTER: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
-            // ndMsg->TTL -= 1; // decrements time to live
+
+            // ndMsg->TTL -= 1;     // decrements time to live //we decided to use fixed TTL=255
             ndMsg->protocol = PROTOCOL_PINGREPLY;
 
             call Sender.send(*ndMsg, AM_BROADCAST_ADDR);
             // makePack(&pck, ndMsg->dest, ndMsg->src, ndMsg->TTL, PROTOCOL_PINGREPLY, 0, (uint8_t *) ndMsg->payload, PACKET_MAX_PAYLOAD_SIZE);
         } else if(ndMsg->protocol == PROTOCOL_PINGREPLY && ndMsg->dest == TOS_NODE_ID) {
             dbg(NEIGHBOR_CHANNEL,"Found Neighbor %d\n", ndMsg->src);
-            // // call Sender.send(*ndMsg, AM_BROADCAST_ADDR);
-            // if(!call ndMap.contains(ndMsg->src)) {
-            //     call ndMap.insert(ndMsg->src, ndMsg->TTL);
-                
-            // } else {
-            //     call ndMap.insert(ndMsg->src, ndMsg->TTL);
-            // }
-            // call NDisc.print();
 
             if (call ndMap.contains(ndMsg->src)) {
                 packedData = call ndMap.get(ndMsg->src);
@@ -97,18 +90,6 @@ implementation {
             call NDisc.print();  // Print neighbor table
         }
     }
-
-    // command void NDisc.print() {
-    //     uint16_t i = 0;
-    //     uint32_t* keys = call ndMap.getKeys();    
-    //     // Print neighbors
-    //     dbg(NEIGHBOR_CHANNEL, "Printing Neighbors of %d:\n", TOS_NODE_ID);
-    //     for(i = 0; i < call ndMap.size(); i++) {
-    //         if(keys[i] != 0) {
-    //             dbg(NEIGHBOR_CHANNEL, "\tNode %d\n", keys[i]);
-    //         }
-    //     }
-    // }
 
     command void NDisc.print() {
         uint16_t i = 0;
@@ -133,28 +114,6 @@ implementation {
             }
         }
     }
-
-    // event void Timer.fired() {
-    //     uint16_t i = 0;
-    //     uint8_t payload = 0;
-    //     uint32_t* keys = call ndMap.getKeys();
-    //     // call NDisc.print();
-    //     // Remove old neighbors
-    //     for(i = 0; i < call ndMap.size(); i++) {
-    //         if(keys[i] != 0) {
-    //             dbg(NEIGHBOR_CHANNEL, "Checking Neighbor\n");
-    //             if (call ndMap.get(keys[i]) - call Timer.getNow() < 1000){
-    //                 dbg(NEIGHBOR_CHANNEL, "Removing Neighbor %d\n", keys[i]);
-    //                 call ndMap.remove(keys[i]);
-    //             }
-    //         }
-    //     }
-    
-    //     makePack(&pck, TOS_NODE_ID, 0, 255, PROTOCOL_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
-    //     call Sender.send(pck, AM_BROADCAST_ADDR);
-    
-    // }
-
 
     event void Timer.fired() {
         uint16_t i = 0;
