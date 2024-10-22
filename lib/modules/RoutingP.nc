@@ -2,9 +2,9 @@
 #include "../../includes/channels.h"
 #include "../../includes/packet.h"
 #include "../../includes/protocol.h"
-#define maxRoutes 255
-#define maxCost 18
-#define LS_TTL 18
+#define maxRoutes 256
+#define maxCost 17
+#define LS_TTL 17
 
 
 module RoutingP {

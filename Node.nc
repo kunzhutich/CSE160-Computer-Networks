@@ -75,7 +75,7 @@ implementation{
         } else if(myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
             call NDisc.nDiscovery(myMsg);
         } else {
-            call Flood.flood(myMsg);
+            call Routing.routed(myMsg);
         }
         return msg;
     }
