@@ -59,7 +59,7 @@ implementation{
     command void Routing.start(){
         call ND.start();
         call rTimer.startPeriodic(10000);
-        dbg(ROUTING_CHANNEL, "Starting Routing");
+        dbg(ROUTING_CHANNEL, "Starting Routing\n");
     }
 
         command void Routing.ping(uint16_t destination, uint8_t *payload) {

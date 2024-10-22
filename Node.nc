@@ -72,7 +72,7 @@ implementation{
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
-        } else if(myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
+        } else if(myMsg->dest == 0) {
             call NDisc.nDiscovery(myMsg);
         } else {
             call Routing.routed(myMsg);
