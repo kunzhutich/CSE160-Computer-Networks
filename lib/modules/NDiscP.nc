@@ -58,16 +58,16 @@ implementation {
         
         if(ndMsg->protocol == PROTOCOL_PING && ndMsg->TTL > 0) {
             // dbg(NEIGHBOR_CHANNEL, "BEFORE: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
-            ndMsg->dest = ndMsg->src;
+            // ndMsg->dest = ndMsg->src;
             ndMsg->src = TOS_NODE_ID; 
             // dbg(NEIGHBOR_CHANNEL, "AFTER: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
 
-            // ndMsg->TTL -= 1;     // decrements time to live //we decided to use fixed TTL=255
+            ndMsg->TTL -= 1;     // decrements time to live //we decided to use fixed TTL=255
             ndMsg->protocol = PROTOCOL_PINGREPLY;
 
             call Sender.send(*ndMsg, AM_BROADCAST_ADDR);
             // makePack(&pck, ndMsg->dest, ndMsg->src, ndMsg->TTL, PROTOCOL_PINGREPLY, 0, (uint8_t *) ndMsg->payload, PACKET_MAX_PAYLOAD_SIZE);
-        } else if(ndMsg->protocol == PROTOCOL_PINGREPLY && ndMsg->dest == TOS_NODE_ID) {
+        } else if(ndMsg->protocol == PROTOCOL_PINGREPLY && ndMsg->dest == 0) {
             dbg(NEIGHBOR_CHANNEL,"Found Neighbor %d\n", ndMsg->src);
 
             if (call ndMap.contains(ndMsg->src)) {
@@ -109,8 +109,8 @@ implementation {
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
                 linkQuality = (totalPacketsSent == 0) ? 0.0 :
                                     (float)totalPacketsReceived / totalPacketsSent;
-                dbg(NEIGHBOR_CHANNEL, "\tNode %d: Link Quality: %.2f, Active: %s\n",
-                    keys[i], linkQuality, isActive ? "Yes" : "No");
+                dbg(NEIGHBOR_CHANNEL, "\tNode %d: Link Quality: %.2f, Active: %s, SeqNum: %d\n",
+                    keys[i], linkQuality, isActive ? "Yes" : "No", totalPacketsSent);
             }
         }
     }
@@ -149,7 +149,7 @@ implementation {
         }
 
         // Send a PING to discover neighbors
-        makePack(&pck, TOS_NODE_ID, 0, 255, PROTOCOL_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&pck, TOS_NODE_ID, 0, 1, PROTOCOL_PING, totalPacketsSent, &payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(pck, AM_BROADCAST_ADDR);
     }
 
