@@ -20,15 +20,15 @@ def main():
     s.addChannel(s.COMMAND_CHANNEL);
     s.addChannel(s.GENERAL_CHANNEL);
     # s.addChannel(s.HASHMAP_CHANNEL);
-    s.addChannel(s.NEIGHBOR_CHANNEL);
-    # s.addChannel(s.FLOODING_CHANNEL);
+    # s.addChannel(s.NEIGHBOR_CHANNEL);
+    s.addChannel(s.FLOODING_CHANNEL);
 
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(5);
 
     s.moteOff(4);
     s.moteOff(8);
-    # s.ping(2, 8, "Hello, World");
+    s.ping(2, 8, "Hello, World");
     s.runTime(5);
 
     s.moteOn(4);
