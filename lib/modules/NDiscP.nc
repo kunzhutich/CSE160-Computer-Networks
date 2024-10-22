@@ -109,8 +109,8 @@ implementation {
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
                 linkQuality = (totalPacketsSent == 0) ? 0.0 :
                                     (float)totalPacketsReceived / totalPacketsSent;
-                dbg(NEIGHBOR_CHANNEL, "\tNode %d: Link Quality: %.2f, Active: %s\n",
-                    keys[i], linkQuality, isActive ? "Yes" : "No");
+                dbg(NEIGHBOR_CHANNEL, "\tNode %d: Link Quality: %.2f, Active: %s, SeqNum: %d\n",
+                    keys[i], linkQuality, isActive ? "Yes" : "No", totalPacketsSent);
             }
         }
     }
