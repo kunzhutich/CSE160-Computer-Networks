@@ -47,7 +47,7 @@ implementation{
     Route routingTable[maxRoutes];
 
     // Route RoutingTable[100];
-     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
+    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
         Package->src = src;
         Package->dest = dest;
         Package->TTL = TTL;
@@ -57,12 +57,13 @@ implementation{
     }
 
     command void Routing.start(){
-        call ND.start();
+        // call ND.start();
         call rTimer.startPeriodic(10000);
+        init();
         dbg(ROUTING_CHANNEL, "Starting Routing\n");
     }
 
-        command void Routing.ping(uint16_t destination, uint8_t *payload) {
+    command void Routing.ping(uint16_t destination, uint8_t *payload) {
         makePack(&rt, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
         dbg(ROUTING_CHANNEL, "PING FROM %d TO %d\n", TOS_NODE_ID, destination);
         logPack(&rt);
@@ -220,6 +221,58 @@ implementation{
             }
         }
     }
+    // void djikstra() {
+    //     uint16_t i = 0;
+    //     uint8_t currentNode = TOS_NODE_ID, minCost = maxCost, nextNode = 0, prevNode = 0;
+    //     uint8_t prev[maxRoutes];
+    //     uint8_t cost[maxRoutes];
+    //     bool visited[maxRoutes];
+    //     uint16_t count = numNodes;
+    //     for(i = 0; i < maxRoutes; i++) {
+    //         cost[i] = maxCost;
+    //         prev[i] = 0;
+    //         visited[i] = FALSE;
+    //     }
+    //     cost[currentNode] = 0;
+    //     prev[currentNode] = 0;
+    //     while(TRUE) {
+    //         for(i = 1; i < maxRoutes; i++) {
+    //             if(i != currentNode && linkState[currentNode][i] < maxCost && cost[currentNode] + linkState[currentNode][i] < cost[i]) {
+    //                 cost[i] = cost[currentNode] + linkState[currentNode][i];
+    //                 prev[i] = currentNode;
+    //             }
+    //         }
+    //         visited[currentNode] = TRUE;            
+    //         minCost = maxCost;
+    //         nextNode = 0;
+    //         for(i = 1; i < maxRoutes; i++) {
+    //             if(cost[i] < minCost && !visited[i]) {
+    //                 minCost = cost[i];
+    //                 nextNode = i;
+    //             }
+    //         }
+    //         currentNode = nextNode;
+    //         if(--count == 0) {
+    //             break;
+    //         }
+    //     }
+    //     // NEED: add route to table
+    //     for(i = 1; i < maxRoutes; i++) {
+    //         if(i == TOS_NODE_ID) {
+    //             continue;
+    //         }
+    //         if(cost[i] != maxCost) {
+    //             prevNode = i;
+    //             while(prev[prevNode] != TOS_NODE_ID) {
+    //                 prevNode = prev[prevNode];
+    //             }
+    //             addRoute(i, prevNode, cost[i]);
+    //         } else {
+    //             removeRoute(i);
+    //         }
+    //     }
+    // }
+
     void djikstra() {
         uint16_t i = 0;
         uint8_t currentNode = TOS_NODE_ID, minCost = maxCost, nextNode = 0, prevNode = 0;
@@ -227,46 +280,69 @@ implementation{
         uint8_t cost[maxRoutes];
         bool visited[maxRoutes];
         uint16_t count = numNodes;
+
+        // Initialize cost and previous node arrays
         for(i = 0; i < maxRoutes; i++) {
-            cost[i] = maxCost;
-            prev[i] = 0;
-            visited[i] = FALSE;
+            cost[i] = maxCost;     // Initialize all nodes to max cost
+            prev[i] = 0;           // No previous node at the start
+            visited[i] = FALSE;    // No node has been visited
         }
-        cost[currentNode] = 0;
-        prev[currentNode] = 0;
-        while(TRUE) {
-            for(i = 1; i < maxRoutes; i++) {
-                if(i != currentNode && linkState[currentNode][i] < maxCost && cost[currentNode] + linkState[currentNode][i] < cost[i]) {
-                    cost[i] = cost[currentNode] + linkState[currentNode][i];
-                    prev[i] = currentNode;
-                }
-            }
-            visited[currentNode] = TRUE;            
+
+        // Set the starting node (currentNode is the source, i.e., TOS_NODE_ID)
+        cost[currentNode] = 0;     // Cost to reach itself is zero
+        prev[currentNode] = TOS_NODE_ID; // Start at itself
+
+        while(count > 0) {
+            // Find the next unvisited node with the minimum cost
             minCost = maxCost;
             nextNode = 0;
             for(i = 1; i < maxRoutes; i++) {
-                if(cost[i] < minCost && !visited[i]) {
+                if(!visited[i] && cost[i] < minCost) {
                     minCost = cost[i];
                     nextNode = i;
                 }
             }
-            currentNode = nextNode;
-            if(--count == 0) {
+
+            // If no valid next node is found, break
+            if(nextNode == 0) {
                 break;
             }
+
+            // Mark the current node as visited
+            currentNode = nextNode;
+            visited[currentNode] = TRUE;
+
+            // Update the cost for each neighboring node
+            for(i = 1; i < maxRoutes; i++) {
+                if(i != currentNode && linkState[currentNode][i] < maxCost && !visited[i]) {
+                    uint8_t newCost = cost[currentNode] + linkState[currentNode][i];
+                    if(newCost < cost[i]) {
+                        cost[i] = newCost;
+                        prev[i] = currentNode;  // Update the previous node
+                    }
+                }
+            }
+
+            // Decrease the number of unvisited nodes
+            count--;
         }
-        // NEED: add route to table
+
+        // Now, add the routes to the routing table based on the `prev` array
         for(i = 1; i < maxRoutes; i++) {
             if(i == TOS_NODE_ID) {
                 continue;
             }
             if(cost[i] != maxCost) {
+                // Trace back to find the next hop
                 prevNode = i;
                 while(prev[prevNode] != TOS_NODE_ID) {
                     prevNode = prev[prevNode];
                 }
+                // Add the route with the correct nextHop and cost
                 addRoute(i, prevNode, cost[i]);
+                dbg(ROUTING_CHANNEL, "Route added to %d with nextHop %d and cost %d\n", i, prevNode, cost[i]);
             } else {
+                // No route found, remove it
                 removeRoute(i);
             }
         }
@@ -275,7 +351,12 @@ implementation{
 
 
     event void rTimer.fired(){
-        sendLSP(0);
+        if(call rTimer.isOneShot()) {
+            call rTimer.startPeriodic(30000 + (uint16_t) (call Random.rand16()%5000));
+        } else {
+            // Send flooding packet w/neighbor list
+            sendLSP(0);
+        }
     }
     void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost) {
         if(cost < routingTable[dest].cost) {

@@ -37,7 +37,7 @@ implementation{
     event void Boot.booted(){
         call AMControl.start();
 
-        call NDisc.start();         // When doing flooding module, should comment this line
+        // call NDisc.start();         // When doing flooding module, should comment this line
         call Routing.start();
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
