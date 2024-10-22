@@ -13,11 +13,11 @@ implementation {
     components new SimpleSendC(AM_PACK);
     RoutingP.Sender -> SimpleSendC;
 
-    components new FloodC();
+    components FloodC;
     RoutingP.flo -> FloodC;
 
-    components new NDiscC();
-    RoutingP.NDisc -> NDiscC;
+    components NDiscC;
+    RoutingP.ND -> NDiscC;
 
     components new TimerMilliC() as RoutingTimer;
     RoutingP.rTimer -> RoutingTimer;

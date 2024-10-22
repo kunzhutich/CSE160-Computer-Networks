@@ -37,4 +37,7 @@ implementation {
 
     components FloodC;
     Node.Flood -> FloodC;
+
+    components RoutingC;
+    Node.Routing -> RoutingC;
 }

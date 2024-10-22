@@ -25,6 +25,7 @@ module Node{
 
     uses interface NDisc;
     uses interface Flood;
+    uses interface Routing;
 }
 
 implementation{
@@ -37,7 +38,7 @@ implementation{
         call AMControl.start();
 
         call NDisc.start();         // When doing flooding module, should comment this line
-
+        call Routing.start();
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
 
