@@ -37,4 +37,18 @@ implementation {
 
     components FloodC;
     Node.Flood -> FloodC;
+
+
+    components LinkStateC;
+    Node.LinkState -> LinkStateC;
+
+    components IPC;
+    Node.IP -> IPC;
+
+    // Wire NDisc neighborUpdate event to LinkState handleNeighborUpdate command
+    // NDiscC.NeighborUpdate -> LinkStateC.handleNeighborUpdate;
+
+    // Correct wiring
+    NDiscC.neighborUpdate -> Node.neighborUpdate;
+    Node.neighborUpdate -> LinkStateC.handleNeighborUpdate;
 }

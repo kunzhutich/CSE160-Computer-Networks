@@ -38,6 +38,10 @@ implementation {
         memcpy(Package->payload, payload, length);
     }
 
+    event void Sender.sendDone(message_t* msg, error_t error) {
+        // Handle the sendDone event
+        dbg(NEIGHBOR_CHANNEL, "NDisc: Message sent successfully.\n");
+    }
 
 
     command void NDisc.start() {
@@ -113,6 +117,8 @@ implementation {
                     keys[i], linkQuality, isActive ? "Yes" : "No");
             }
         }
+
+        signal NDisc.neighborUpdate();      // I should not place it here, should replace somewhere else later
     }
 
     event void Timer.fired() {
@@ -139,6 +145,8 @@ implementation {
 
                     dbg(NEIGHBOR_CHANNEL, "Printing Neighbors again after removing a neighbor.\n");
                     call NDisc.print();
+
+                    signal NDisc.neighborUpdate();      //placing it here should be correct since we want to notify all nodes that we lost a neighbor
                 } else {
                     missedResponses++;
                     totalPacketsSent++;

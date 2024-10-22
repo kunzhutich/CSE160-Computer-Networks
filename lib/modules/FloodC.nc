@@ -12,8 +12,11 @@ implementation {
 
     components new SimpleSendC(AM_PACK);
     FloodP.Sender -> SimpleSendC;
-
     
     components new HashmapC(uint16_t, 20);
     FloodP.fMap -> HashmapC;
+
+
+    components LinkStateC;
+    FloodP.LinkState -> LinkStateC;
 }

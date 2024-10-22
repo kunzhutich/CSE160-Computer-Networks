@@ -4,10 +4,11 @@
 
 #ifndef PACKET_H
 #define PACKET_H
+// #define PROTOCOL_LINKSTATE 2
 
-
-# include "protocol.h"
+#include "protocol.h"
 #include "channels.h"
+#include "constants.h" 
 
 enum{
 	PACKET_HEADER_LENGTH = 8,
@@ -39,5 +40,19 @@ void logPack(pack *input){
 enum{
 	AM_PACK=6
 };
+
+
+typedef struct {
+    uint16_t neighbor;
+    uint16_t cost;
+} NeighborInfo;
+
+typedef struct {
+    uint16_t nodeID;
+    uint16_t seqNum;
+    uint8_t numNeighbors;
+    NeighborInfo neighbors[MAX_NEIGHBORS];
+} LSAPayload;
+
 
 #endif

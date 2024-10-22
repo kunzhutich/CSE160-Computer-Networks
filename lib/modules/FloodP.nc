@@ -8,6 +8,8 @@ module FloodP {
     provides interface Flood;
     uses interface SimpleSend as Sender;
     uses interface Hashmap<uint16_t> as fMap;
+
+    uses interface LinkState;
 }
 
 implementation {
@@ -46,6 +48,13 @@ implementation {
 
         // dbg(FLOODING_CHANNEL, "Received packet: Src: %d, Dest: %d, Seq: %d, TTL: %d, Protocol: %d\n",
         //     myMsg->src, myMsg->dest, myMsg->seq, myMsg->TTL, myMsg->protocol);
+
+
+        // this if block should be here i think
+        if (myMsg->protocol == PROTOCOL_LINKSTATE) {
+            // Pass the LSA to the Link State module
+            call LinkState.receiveLSA(myMsg);
+        }
 
         if (call fMap.contains(key)) { 
             dbg(FLOODING_CHANNEL, "Packet already seen!\n");
@@ -95,5 +104,8 @@ implementation {
         }
     }
 
-    
+    event void Sender.sendDone(message_t* msg, error_t error) {
+        // Handle the sendDone event
+        dbg(FLOODING_CHANNEL, "Flood: Message sent successfully.\n");
+    }
 }

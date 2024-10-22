@@ -30,6 +30,7 @@ class TestSim:
 
     # Personal Debuggin Channels for some of the additional models implemented.
     HASHMAP_CHANNEL="hashmap";
+    LINKSTATE_CHANNEL="linkstate";
 
     # Initialize Vars
     numMote=0

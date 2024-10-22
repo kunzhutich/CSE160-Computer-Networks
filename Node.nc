@@ -25,6 +25,9 @@ module Node{
 
     uses interface NDisc;
     uses interface Flood;
+
+    uses interface LinkState;
+    uses interface IP;
 }
 
 implementation{
@@ -37,6 +40,7 @@ implementation{
         call AMControl.start();
 
         // call NDisc.start();         // When doing flooding module, should comment this line
+        call LinkState.init();
 
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
@@ -65,20 +69,75 @@ implementation{
     //     return msg;
     // }
 
+    // PROJECT 1
+    // event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
+    //     pack* myMsg = (pack*) payload;
+    //     if(len!=sizeof(pack)) {
+    //         dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
+    //         dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
+    //         return msg;         // Drop packet
+    //     } else if(myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
+    //         call NDisc.nDiscovery(myMsg);
+    //     } else {
+    //         call Flood.flood(myMsg);
+    //     }
+    //     return msg;
+    // }
+
+    // PROJECT 2
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
         pack* myMsg = (pack*) payload;
-        if(len!=sizeof(pack)) {
+        if (len != sizeof(pack)) {
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
-            return msg;         // Drop packet
-        } else if(myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
+            return msg;
+        }
+
+        if (myMsg->dest == 0 || (myMsg->dest == TOS_NODE_ID && myMsg->TTL == 255)) {
             call NDisc.nDiscovery(myMsg);
+        } else if (myMsg->protocol == PROTOCOL_LINKSTATE) {
+            // Link State Advertisement packet
+            call LinkState.receiveLSA(myMsg);
+        } else if (myMsg->dest == TOS_NODE_ID) {
+            // Packet is for this node
+            // Handle application-specific protocols
+            if (myMsg->protocol == PROTOCOL_PING) {
+                // Handle ping
+                dbg(GENERAL_CHANNEL, "Received PING packet from %d\n", myMsg->src);
+                // Process the ping packet (e.g., send a ping reply)
+            } else {
+                dbg(GENERAL_CHANNEL, "Received packet for unknown protocol %d\n", myMsg->protocol);
+            }
         } else {
-            call Flood.flood(myMsg);
+            // Forward the packet using IP
+            call IP.send(myMsg);
         }
         return msg;
     }
 
+
+    event void NDisc.neighborUpdate() {
+        call LinkState.handleNeighborUpdate();
+    }
+
+    event void IP.receive(pack *msg) {
+        // Handle received packet
+        if (msg->dest == TOS_NODE_ID) {
+            if (msg->protocol == PROTOCOL_PING) {
+                dbg(GENERAL_CHANNEL, "Received PING packet\n");
+            } else {
+                dbg(GENERAL_CHANNEL, "Received packet for unknown protocol %d\n", msg->protocol);
+            }
+        } else {
+            dbg(GENERAL_CHANNEL, "Received packet not for this node\n");
+        }
+    }
+
+    event void Sender.sendDone(message_t* msg, error_t error) {
+        // Handle the sendDone event
+        // For example, you can log that the message was sent
+        dbg(GENERAL_CHANNEL, "Node: Message sent successfully.\n");
+    }
 
     event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
         dbg(GENERAL_CHANNEL, "PING EVENT \n");
@@ -94,7 +153,9 @@ implementation{
 
     event void CommandHandler.printNeighbors(){}
 
-    event void CommandHandler.printRouteTable(){}
+    event void CommandHandler.printRouteTable(){
+        call LinkState.printRoutingTable();
+    }
 
     event void CommandHandler.printLinkState(){}
 
