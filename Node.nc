@@ -79,6 +79,10 @@ implementation{
         return msg;
     }
 
+    event void NDisc.neighborChanged() {
+        dbg(GENERAL_CHANNEL, "Neighbor change detected, starting flooding.\n");
+        call Flood.startFlooding();  // Trigger flooding when neighbors change
+    }
 
     event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
         dbg(GENERAL_CHANNEL, "PING EVENT \n");

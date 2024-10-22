@@ -37,4 +37,7 @@ implementation {
 
     components FloodC;
     Node.Flood -> FloodC;
+
+    // Trigger flooding when neighbors change
+    NDiscC.neighborChanged -> FloodC.startFlooding;
 }
