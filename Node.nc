@@ -23,7 +23,7 @@ module Node{
 
     uses interface CommandHandler;
 
-    uses interface NDisc;
+    uses interface NeighborDiscovery;
     uses interface Flood;
     uses interface Routing;
 }
@@ -37,7 +37,7 @@ implementation{
     event void Boot.booted(){
         call AMControl.start();
 
-        call NDisc.start();         // When doing flooding module, should comment this line
+        call NeighborDiscovery.start();         // When doing flooding module, should comment this line
         call Routing.start();
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
@@ -73,7 +73,7 @@ implementation{
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
         } else if(myMsg->dest == 0) {
-            call NDisc.nDiscovery(myMsg);
+            call NeighborDiscovery.handleNeighbor(myMsg);
         } else {
             call Routing.routed(myMsg);
         }
@@ -83,19 +83,23 @@ implementation{
 
     event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
         dbg(GENERAL_CHANNEL, "PING EVENT \n");
-
+        call Routing.ping(destination, payload);
         // Clear hashmap if needed before sending a new ping
-        call Flood.init();
+    //     call Flood.init();
 
-        makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+    //     makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
 
-        call Sender.send(sendPackage, destination);
-        call Flood.ping(destination, payload);
+    //     call Sender.send(sendPackage, destination);
+    //     call Flood.ping(destination, payload);
     }
 
-    event void CommandHandler.printNeighbors(){}
+    event void CommandHandler.printNeighbors(){
+        call NeighborDiscovery.printNeighbors();
+    }
 
-    event void CommandHandler.printRouteTable(){}
+    event void CommandHandler.printRouteTable(){
+        call Routing.printTable();
+    }
 
     event void CommandHandler.printLinkState(){}
 

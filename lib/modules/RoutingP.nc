@@ -13,7 +13,7 @@ module RoutingP {
     uses interface Hashmap<uint16_t> as rMap;
     uses interface Flood as flo;
     uses interface Timer<TMilli> as rTimer;
-    uses interface NDisc as ND;
+    uses interface NeighborDiscovery as ND;
 }
 
 implementation{
@@ -42,6 +42,7 @@ implementation{
     void sendLSP(uint8_t lost);
     void removeRoute(uint8_t dest);
     void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost);
+    void init();
 
     uint8_t linkState[maxRoutes][maxRoutes];
     Route routingTable[maxRoutes];
@@ -57,14 +58,16 @@ implementation{
     }
 
     command void Routing.start(){
-        call ND.start();
-        call rTimer.startPeriodic(10000);
+        // call ND.start();
+        init();
+        call rTimer.startOneShot(30000);
         dbg(ROUTING_CHANNEL, "Starting Routing\n");
     }
 
         command void Routing.ping(uint16_t destination, uint8_t *payload) {
         makePack(&rt, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
         dbg(ROUTING_CHANNEL, "PING FROM %d TO %d\n", TOS_NODE_ID, destination);
+        
         logPack(&rt);
         call Routing.routed(&rt);
     }    
@@ -98,7 +101,7 @@ implementation{
         if(myMsg->src == TOS_NODE_ID || call rMap.contains(key)) {
             return;
         } else {
-            call rMap.insert(myMsg->src, myMsg->seq);
+            call rMap.insert(key, 1);
         }
         // If state changed -> rerun djikstra
         if(updateState(myMsg)) {
@@ -131,15 +134,6 @@ implementation{
         djikstra();
     }
 
-    command void Routing.printTable() {
-        uint16_t i;
-        dbg(ROUTING_CHANNEL, "DESTINATION  HOP  COST\n");
-        for(i = 1; i < maxRoutes; i++) {
-            if(routingTable[i].cost != maxCost)
-                dbg(ROUTING_CHANNEL, "%4d%5d%6d\n", i, routingTable[i].nextHop, routingTable[i].cost);
-        }
-    }
-
     void init() {
         uint16_t i, j;
         for(i = 0; i < maxRoutes; i++) {
@@ -166,7 +160,7 @@ implementation{
 
     bool updateState(pack* myMsg) {
         uint16_t i;
-        LSP *lsp = (LSP *)myMsg->payload;
+        LSP *lsp = (LSP*)myMsg->payload;
         bool state = FALSE;
         for(i = 0; i < 10; i++) {
             if(linkState[myMsg->src][lsp[i].neighbor] != lsp[i].cost) {
@@ -222,7 +216,10 @@ implementation{
     }
     void djikstra() {
         uint16_t i = 0;
-        uint8_t currentNode = TOS_NODE_ID, minCost = maxCost, nextNode = 0, prevNode = 0;
+        uint8_t currentNode = TOS_NODE_ID;
+        uint8_t minCost = maxCost;
+        uint8_t nextNode = 0;
+        uint8_t  prevNode = 0;
         uint8_t prev[maxRoutes];
         uint8_t cost[maxRoutes];
         bool visited[maxRoutes];
@@ -255,7 +252,6 @@ implementation{
                 break;
             }
         }
-        // NEED: add route to table
         for(i = 1; i < maxRoutes; i++) {
             if(i == TOS_NODE_ID) {
                 continue;
@@ -265,6 +261,7 @@ implementation{
                 while(prev[prevNode] != TOS_NODE_ID) {
                     prevNode = prev[prevNode];
                 }
+                
                 addRoute(i, prevNode, cost[i]);
             } else {
                 removeRoute(i);
@@ -275,8 +272,21 @@ implementation{
 
 
     event void rTimer.fired(){
+        if(call rTimer.isOneShot()) {
+            call rTimer.startPeriodic(30000);
+        } else {
         sendLSP(0);
     }
+    }
+    command void Routing.printTable() {
+        uint16_t i;
+        dbg(ROUTING_CHANNEL, "DEST HOP  COST\n");
+        for(i = 1; i < maxRoutes; i++) {
+            if(routingTable[i].cost != maxCost)
+                dbg(ROUTING_CHANNEL, "%4d%5d%6d\n", i, routingTable[i].nextHop, routingTable[i].cost);
+        }
+    }
+
     void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost) {
         if(cost < routingTable[dest].cost) {
             routingTable[dest].nextHop = nextHop;

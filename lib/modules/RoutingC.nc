@@ -16,8 +16,8 @@ implementation {
     components FloodC;
     RoutingP.flo -> FloodC;
 
-    components NDiscC;
-    RoutingP.ND -> NDiscC;
+    components NeighborDiscoveryC;
+    RoutingP.ND -> NeighborDiscoveryC;
 
     components new TimerMilliC() as RoutingTimer;
     RoutingP.rTimer -> RoutingTimer;
