@@ -153,7 +153,7 @@ implementation {
         call Sender.send(pck, AM_BROADCAST_ADDR);
     }
 
-    command uint32_t NDisc.getNeighbors() {
+    command uint32_t* NDisc.getNeighbors() {
         return call ndMap.getKeys();
     }
 

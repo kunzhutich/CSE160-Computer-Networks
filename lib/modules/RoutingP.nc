@@ -42,6 +42,7 @@ implementation{
     void sendLSP(uint8_t lost);
     void removeRoute(uint8_t dest);
     void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost);
+    void init();
 
     uint8_t linkState[maxRoutes][maxRoutes];
     Route routingTable[maxRoutes];
