@@ -13,7 +13,7 @@ module RoutingP {
     uses interface Hashmap<uint16_t> as rMap;
     uses interface Flood as flo;
     uses interface Timer<TMilli> as rTimer;
-    uses interface NeighborDiscovery as ND;
+    uses interface NDisc;
 }
 
 implementation{
@@ -123,8 +123,8 @@ implementation{
     }
 
     command void Routing.foundNeighbor() {
-        uint32_t* neighbors = call ND.getNeighbors();
-        uint16_t nSize = call ND.getSize();
+        uint32_t* neighbors = call NDisc.getNeighbors();
+        uint16_t nSize = call NDisc.getSize();
         uint16_t i = 0;
         for(i = 0; i < nSize; i++) {
             linkState[TOS_NODE_ID][neighbors[i]] = 1;
@@ -178,8 +178,8 @@ implementation{
     }
 
     void sendLSP(uint8_t lost) {
-        uint32_t* neighbors = call ND.getNeighbors();
-        uint16_t nSize = call ND.getSize();
+        uint32_t* neighbors = call NDisc.getNeighbors();
+        uint16_t nSize = call NDisc.getSize();
         uint16_t i = 0, counter = 0;
         LSP linkStatePayload[10];
         // Zero out the array

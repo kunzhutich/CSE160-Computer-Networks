@@ -23,7 +23,7 @@ module Node{
 
     uses interface CommandHandler;
 
-    uses interface NeighborDiscovery;
+    uses interface NDisc;
     uses interface Flood;
     uses interface Routing;
 }
@@ -37,7 +37,7 @@ implementation{
     event void Boot.booted(){
         call AMControl.start();
 
-        call NeighborDiscovery.start();         // When doing flooding module, should comment this line
+        call NDisc.start();         // When doing flooding module, should comment this line
         call Routing.start();
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
@@ -77,7 +77,7 @@ implementation{
             call Routing.linkState(myMsg);
         } 
         else if(myMsg->dest == 0) {
-            call NeighborDiscovery.handleNeighbor(myMsg);
+            call NDisc.nDiscovery(myMsg);
         } else {
             call Routing.routed(myMsg);
         }
@@ -98,7 +98,7 @@ implementation{
     }
 
     event void CommandHandler.printNeighbors(){
-        call NeighborDiscovery.printNeighbors();
+        call NDisc.print();
     }
 
     event void CommandHandler.printRouteTable(){
