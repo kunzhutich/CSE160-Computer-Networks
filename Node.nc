@@ -72,7 +72,11 @@ implementation{
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
-        } else if(myMsg->dest == 0) {
+
+        }else if (myMsg->protocol == PROTOCOL_LINKSTATE){
+            call Routing.linkState(myMsg);
+        } 
+        else if(myMsg->dest == 0) {
             call NeighborDiscovery.handleNeighbor(myMsg);
         } else {
             call Routing.routed(myMsg);

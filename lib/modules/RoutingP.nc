@@ -4,7 +4,7 @@
 #include "../../includes/protocol.h"
 #define maxRoutes 256
 #define maxCost 17
-#define LS_TTL 17
+
 
 
 module RoutingP {
@@ -203,7 +203,7 @@ implementation{
             counter++;
             if(counter == 10 || i == nSize - 1) {
                 // Send LSP to each neighbor                
-                makePack(&rt, TOS_NODE_ID, 0, LS_TTL, PROTOCOL_PING, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
+                makePack(&rt, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
                 call Sender.send(rt, AM_BROADCAST_ADDR);
                 // Zero the array
                 while(counter > 0) {
@@ -224,6 +224,8 @@ implementation{
         uint8_t cost[maxRoutes];
         bool visited[maxRoutes];
         uint16_t count = numNodes;
+
+        
         for(i = 0; i < maxRoutes; i++) {
             cost[i] = maxCost;
             prev[i] = 0;
@@ -248,10 +250,13 @@ implementation{
                 }
             }
             currentNode = nextNode;
-            if(--count == 0) {
+            count -= 1;
+            if(nextNode == 0) {
                 break;
             }
+            
         }
+        
         for(i = 1; i < maxRoutes; i++) {
             if(i == TOS_NODE_ID) {
                 continue;
@@ -261,12 +266,13 @@ implementation{
                 while(prev[prevNode] != TOS_NODE_ID) {
                     prevNode = prev[prevNode];
                 }
-                
+
                 addRoute(i, prevNode, cost[i]);
             } else {
                 removeRoute(i);
             }
         }
+
     }
 
 
@@ -280,10 +286,10 @@ implementation{
     }
     command void Routing.printTable() {
         uint16_t i;
-        dbg(ROUTING_CHANNEL, "DEST HOP  COST\n");
+        dbg(ROUTING_CHANNEL, "DEST\t  HOP\t  COST\n");
         for(i = 1; i < maxRoutes; i++) {
             if(routingTable[i].cost != maxCost)
-                dbg(ROUTING_CHANNEL, "%4d%5d%6d\n", i, routingTable[i].nextHop, routingTable[i].cost);
+                dbg(ROUTING_CHANNEL, "%4d\t%5d\t%6d\n", i, routingTable[i].nextHop, routingTable[i].cost);
         }
     }
 
