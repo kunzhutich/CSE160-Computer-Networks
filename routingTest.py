@@ -36,7 +36,7 @@ def main():
 
     # After sending a ping, simulate a little to prevent collision.
     s.ping(2, 9, "Hello, World")
-    s.runTime(10)
+    s.runTime(20)
 
     # s.moteOff(6)
     s.runTime(30)
