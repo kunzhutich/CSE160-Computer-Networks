@@ -37,7 +37,7 @@ implementation{
 
     void djikstra();
     bool updateState(pack* myMsg);
-    void sendLSP(uint8_t lost);
+    void sendProtocol(uint8_t lost);
     void removeRoute(uint8_t dest);
     void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost);
     void init();
@@ -109,18 +109,25 @@ implementation{
         // Forward to all neighbors
         call Sender.send(*myMsg, AM_BROADCAST_ADDR);
     }
+    void updateLinkState(uint16_t lost) {
+        // Set the link cost to maxCost for both nodes
+        linkState[TOS_NODE_ID][lost] = maxCost;
+        linkState[lost][TOS_NODE_ID] = maxCost;
+    }
 
     command void Routing.lostNeighbor(uint16_t lost) {
-        dbg(ROUTING_CHANNEL, "Lost Neighbor %u\n", lost);
-        if(linkState[TOS_NODE_ID][lost] != maxCost) {
-            linkState[TOS_NODE_ID][lost] = maxCost;
-            linkState[lost][TOS_NODE_ID] = maxCost;
-            numNodes--;
-            removeRoute(lost);
-        }
-        sendLSP(lost);
-        djikstra();
+    dbg(ROUTING_CHANNEL, "Lost Neighbor %u\n", lost);
+    if (linkState[TOS_NODE_ID][lost] != maxCost) {
+        updateLinkState(lost);
+        numNodes--;
+        removeRoute(lost);
     }
+    sendProtocol(lost);
+    djikstra();
+}
+
+
+
 
     command void Routing.foundNeighbor() {
         uint32_t* neighbors = call NDisc.getNeighbors();
@@ -130,7 +137,7 @@ implementation{
             linkState[TOS_NODE_ID][neighbors[i]] = 1;
             linkState[neighbors[i]][TOS_NODE_ID] = 1;
         }
-        sendLSP(0);
+        sendProtocol(0);
         djikstra();
     }
 
@@ -177,7 +184,7 @@ implementation{
         return state;
     }
 
-    void sendLSP(uint8_t lost) {
+    void sendProtocol(uint8_t lost) {
         uint32_t* neighbors = call NDisc.getNeighbors();
         uint16_t nSize = call NDisc.getSize();
         uint16_t i = 0, counter = 0;
@@ -281,7 +288,7 @@ implementation{
         if(call Timer.isOneShot()) {
             call Timer.startPeriodic(30000);
         } else {
-            sendLSP(0);
+            sendProtocol(0);
         }
     }
 
