@@ -10,14 +10,17 @@ configuration NDiscC {
 implementation {
     components NDiscP;
     NDisc = NDiscP;
+
     components new SimpleSendC(AM_PACK);
     NDiscP.Sender -> SimpleSendC;
+
     components new TimerMilliC() as NeighborTimer;
     NDiscP.Timer -> NeighborTimer;
-
-
 
     // Use data structure for neighbor list
     components new HashmapC(uint32_t, 20) as HashMap;
     NDiscP.ndMap -> HashMap;
+
+    components LinkStateC;
+    NDiscP.LinkState -> LinkStateC;
 }

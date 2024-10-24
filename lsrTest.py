@@ -26,7 +26,7 @@ def main():
     # s.addChannel(s.NEIGHBOR_CHANNEL)
     s.addChannel(s.ROUTING_CHANNEL)
 
-    s.runTime(60)
+    s.runTime(30)
 
     s.routeDMP(2)
     s.runTime(10)

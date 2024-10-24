@@ -1,17 +1,10 @@
-/*
-* ANDES Lab - University of California, Merced
-* This class provides the basic functions of a network node.
-*
-* @author UCM ANDES Lab
-* @date   2013/09/03
-*
-*/
 #include <Timer.h>
 #include "includes/command.h"
 #include "includes/packet.h"
 #include "includes/CommandMsg.h"
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
+#include "includes/protocol.h"
 
 module Node{
     uses interface Boot;
@@ -25,7 +18,7 @@ module Node{
 
     uses interface NDisc;
     uses interface Flood;
-    uses interface Routing;
+    uses interface LinkState;
 }
 
 implementation{
@@ -37,8 +30,8 @@ implementation{
     event void Boot.booted(){
         call AMControl.start();
 
-        // call NDisc.start();         // When doing flooding module, should comment this line
-        call Routing.start();
+        call NDisc.start();         // When doing flooding module, should comment this line
+        call LinkState.start();
         dbg(GENERAL_CHANNEL, "Booted\n");
     }
 
@@ -68,14 +61,21 @@ implementation{
 
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
         pack* myMsg = (pack*) payload;
+
+        dbg(GENERAL_CHANNEL, "Node %d received packet from %d, protocol %d, dest %d\n", TOS_NODE_ID, myMsg->src, myMsg->protocol, myMsg->dest);
+        
         if(len!=sizeof(pack)) {
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
         } else if(myMsg->dest == 0) {
             call NDisc.nDiscovery(myMsg);
-        } else {
-            call Routing.routed(myMsg);
+        } else if(myMsg->protocol == PROTOCOL_LINKSTATE) {
+            call LinkState.handleLS(myMsg, len);                         //attention here
+        }
+        else {
+            call LinkState.routePacket(myMsg);
+            // call Flood.flood(myMsg);
         }
         return msg;
     }
@@ -84,18 +84,21 @@ implementation{
     event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
         dbg(GENERAL_CHANNEL, "PING EVENT \n");
 
-        // Clear hashmap if needed before sending a new ping
-        call Flood.init();
+        call LinkState.ping(destination, payload);
 
-        makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+        // // Clear hashmap if needed before sending a new ping
+        // call Flood.init();
+        // makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
 
-        call Sender.send(sendPackage, destination);
-        call Flood.ping(destination, payload);
+        // call Sender.send(sendPackage, destination);
+        // call Flood.ping(destination, payload);
     }
 
     event void CommandHandler.printNeighbors(){}
 
-    event void CommandHandler.printRouteTable(){}
+    event void CommandHandler.printRouteTable(){
+        call LinkState.printRouteTable();
+    }
 
     event void CommandHandler.printLinkState(){}
 

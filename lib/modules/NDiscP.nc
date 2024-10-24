@@ -8,6 +8,7 @@ module NDiscP {
     uses interface Timer<TMilli> as Timer;
     uses interface SimpleSend as Sender;
     uses interface Hashmap<uint32_t> as ndMap;
+    uses interface LinkState;
 }
 
 implementation {
@@ -55,6 +56,7 @@ implementation {
         uint16_t totalPacketsSent, totalPacketsReceived;
         uint8_t missedResponses;
         bool isActive;
+        bool neighborIsNew = FALSE;
         
         if(ndMsg->protocol == PROTOCOL_PING && ndMsg->TTL > 0) {
             // dbg(NEIGHBOR_CHANNEL, "BEFORE: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
@@ -78,6 +80,7 @@ implementation {
                 totalPacketsReceived = 0;
                 missedResponses = 0;
                 isActive = TRUE;
+                neighborIsNew = TRUE;
             }
             
             // Update the neighbor data
@@ -88,6 +91,11 @@ implementation {
             call ndMap.insert(ndMsg->src, packedData);
             
             call NDisc.print();  // Print neighbor table
+
+            if (neighborIsNew) {
+                dbg(NEIGHBOR_CHANNEL, "(N Channel) Node %d discovered new neighbor %d\n", TOS_NODE_ID, ndMsg->src);
+                call LinkState.handleNeighborFound();
+            }
         }
     }
 
@@ -133,9 +141,13 @@ implementation {
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
 
                 if (missedResponses >= 5) {
+                    dbg(NEIGHBOR_CHANNEL, "(N Channel) Node %d lost neighbor %d\n", TOS_NODE_ID, keys[i]);
+
                     isActive = FALSE;
                     dbg(NEIGHBOR_CHANNEL, "Neighbor %d is inactive, removing from table.\n", keys[i]);
                     call ndMap.remove(keys[i]);
+
+                    call LinkState.handleNeighborLost(keys[i]);
 
                     dbg(NEIGHBOR_CHANNEL, "Printing Neighbors again after removing a neighbor.\n");
                     call NDisc.print();
