@@ -88,13 +88,13 @@ implementation{
     event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
         dbg(GENERAL_CHANNEL, "PING EVENT \n");
         call Routing.ping(destination, payload);
+
         // Clear hashmap if needed before sending a new ping
-    //     call Flood.init();
+        // call Flood.init();
 
-    //     makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-
-    //     call Sender.send(sendPackage, destination);
-    //     call Flood.ping(destination, payload);
+        // makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+        // call Sender.send(sendPackage, destination);
+        // call Flood.ping(destination, payload);
     }
 
     event void CommandHandler.printNeighbors(){

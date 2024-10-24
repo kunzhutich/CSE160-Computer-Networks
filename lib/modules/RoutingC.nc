@@ -14,14 +14,14 @@ implementation {
     RoutingP.Sender -> SimpleSendC;
 
     components FloodC;
-    RoutingP.flo -> FloodC;
+    RoutingP.Flood -> FloodC;
 
     components NDiscC;
     RoutingP.NDisc -> NDiscC;
 
     components new TimerMilliC() as RoutingTimer;
-    RoutingP.rTimer -> RoutingTimer;
+    RoutingP.Timer -> RoutingTimer;
 
     components new HashmapC(uint16_t, 20);
-    RoutingP.rMap -> HashmapC;
+    RoutingP.Hashmap -> HashmapC;
 }

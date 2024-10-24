@@ -5,10 +5,8 @@
 #include "channels.h"
 
 enum {
-    // MAX_NEIGHBOR_COUNT = 10,
-    NEIGHBOR_TIMEOUT = 5000,  // Example: Timeout value in milliseconds
+    NEIGHBOR_TIMEOUT = 5000,  // example
 };
-
 
 typedef struct neighborData {
     uint16_t totalPacketsSent;
@@ -16,9 +14,5 @@ typedef struct neighborData {
     uint8_t missedResponses;
     bool isActive;
 } neighborData;
-
-// Function declarations for neighbor discovery
-// void handleNeighborDiscovery(pack* receivedPack);
-// void updateNeighborStatus(uint16_t neighborId, bool isActive);
 
 #endif /* NEIGHBOR_DISCOVERY_H */

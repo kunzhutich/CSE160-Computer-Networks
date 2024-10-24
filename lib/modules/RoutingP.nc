@@ -6,18 +6,16 @@
 #define maxCost 17
 
 
-
 module RoutingP {
     provides interface Routing;
     uses interface SimpleSend as Sender;
-    uses interface Hashmap<uint16_t> as rMap;
-    uses interface Flood as flo;
-    uses interface Timer<TMilli> as rTimer;
+    uses interface Hashmap<uint16_t> as Hashmap;
+    uses interface Flood;
+    uses interface Timer<TMilli> as Timer;
     uses interface NDisc;
 }
 
 implementation{
-
     uint32_t createKey(uint16_t src, uint16_t seq) {
         return ((uint32_t)src << 16) | (uint32_t)seq;
     }
@@ -25,7 +23,7 @@ implementation{
     uint16_t numNodes = 0;
     uint16_t numRoutes = 0;
 
-    pack rt;
+    pack pck;
 
     typedef struct {
         uint8_t nextHop;
@@ -48,7 +46,7 @@ implementation{
     Route routingTable[maxRoutes];
 
     // Route RoutingTable[100];
-     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
+    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
         Package->src = src;
         Package->dest = dest;
         Package->TTL = TTL;
@@ -60,30 +58,30 @@ implementation{
     command void Routing.start(){
         // call ND.start();
         init();
-        call rTimer.startOneShot(30000);
+        call Timer.startOneShot(30000);
         dbg(ROUTING_CHANNEL, "Starting Routing\n");
     }
 
-        command void Routing.ping(uint16_t destination, uint8_t *payload) {
-        makePack(&rt, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+    command void Routing.ping(uint16_t destination, uint8_t *payload) {
+        makePack(&pck, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
         dbg(ROUTING_CHANNEL, "PING FROM %d TO %d\n", TOS_NODE_ID, destination);
         
-        logPack(&rt);
-        call Routing.routed(&rt);
-    }    
-
+        logPack(&pck);
+        call Routing.routed(&pck);
+    }
 
     command void Routing.routed(pack *myMsg){
         uint8_t nextHop;
         if(myMsg->dest == TOS_NODE_ID && myMsg->protocol == PROTOCOL_PING) {
             dbg(ROUTING_CHANNEL, "PING at %d!\n", TOS_NODE_ID);
-            makePack(&rt, myMsg->dest, myMsg->src, 0, PROTOCOL_PINGREPLY, 0,(uint8_t *) myMsg->payload, PACKET_MAX_PAYLOAD_SIZE);
-            call Routing.routed(&rt);
+            makePack(&pck, myMsg->dest, myMsg->src, 0, PROTOCOL_PINGREPLY, 0,(uint8_t *) myMsg->payload, PACKET_MAX_PAYLOAD_SIZE);
+            call Routing.routed(&pck);
             return;
         } else if(myMsg->dest == TOS_NODE_ID && myMsg->protocol == PROTOCOL_PINGREPLY) {
             dbg(ROUTING_CHANNEL, "PING_REPLY at  %d!!!\n", TOS_NODE_ID);
             return;
         }
+
         if(routingTable[myMsg->dest].cost < maxCost) {
             nextHop = routingTable[myMsg->dest].nextHop;
             dbg(ROUTING_CHANNEL, "Node %d routing to %d\n", TOS_NODE_ID, nextHop);
@@ -94,14 +92,15 @@ implementation{
             logPack(myMsg);
         }
     
-    }   
+    }
+
     command void Routing.linkState(pack* myMsg) {
         uint32_t key = createKey(myMsg->src, myMsg->seq);
         // Check seq number
-        if(myMsg->src == TOS_NODE_ID || call rMap.contains(key)) {
+        if(myMsg->src == TOS_NODE_ID || call Hashmap.contains(key)) {
             return;
         } else {
-            call rMap.insert(key, 1);
+            call Hashmap.insert(key, 1);
         }
         // If state changed -> rerun djikstra
         if(updateState(myMsg)) {
@@ -110,6 +109,7 @@ implementation{
         // Forward to all neighbors
         call Sender.send(*myMsg, AM_BROADCAST_ADDR);
     }
+
     command void Routing.lostNeighbor(uint16_t lost) {
         dbg(ROUTING_CHANNEL, "Lost Neighbor %u\n", lost);
         if(linkState[TOS_NODE_ID][lost] != maxCost) {
@@ -203,8 +203,8 @@ implementation{
             counter++;
             if(counter == 10 || i == nSize - 1) {
                 // Send LSP to each neighbor                
-                makePack(&rt, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
-                call Sender.send(rt, AM_BROADCAST_ADDR);
+                makePack(&pck, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
+                call Sender.send(pck, AM_BROADCAST_ADDR);
                 // Zero the array
                 while(counter > 0) {
                     counter--;
@@ -214,6 +214,7 @@ implementation{
             }
         }
     }
+
     void djikstra() {
         uint16_t i = 0;
         uint8_t currentNode = TOS_NODE_ID;
@@ -276,14 +277,14 @@ implementation{
     }
 
 
-
-    event void rTimer.fired(){
-        if(call rTimer.isOneShot()) {
-            call rTimer.startPeriodic(30000);
+    event void Timer.fired(){
+        if(call Timer.isOneShot()) {
+            call Timer.startPeriodic(30000);
         } else {
-        sendLSP(0);
+            sendLSP(0);
+        }
     }
-    }
+
     command void Routing.printTable() {
         uint16_t i;
         dbg(ROUTING_CHANNEL, "DEST\t  HOP\t  COST\n");
@@ -306,10 +307,4 @@ implementation{
         routingTable[dest].cost = maxCost;
         numRoutes--;
     }
-    // command void Routing.print(){
-	// 	uint32_t i = 0;
-		
-	// 	dbg(ROUTING_CHANNEL, "Printing Routing Table\n");
-	// 	dbg(ROUTING_CHANNEL, "Dest\tHop\tCount\n");
-    // }
 }

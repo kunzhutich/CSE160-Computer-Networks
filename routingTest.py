@@ -9,7 +9,7 @@ def main():
     s.runTime(1)
 
     # Load the the layout of the network.
-    s.loadTopo("long_line.topo")
+    s.loadTopo("example.topo")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")
@@ -38,7 +38,7 @@ def main():
     s.ping(2, 9, "Hello, World")
     s.runTime(10)
 
-    s.moteOff(6)
+    # s.moteOff(6)
     s.runTime(30)
 
 

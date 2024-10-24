@@ -7,7 +7,7 @@
 module FloodP {
     provides interface Flood;
     uses interface SimpleSend as Sender;
-    uses interface Hashmap<uint16_t> as fMap;
+    uses interface Hashmap<uint16_t> as Hashmap;
 }
 
 implementation {
@@ -28,7 +28,7 @@ implementation {
 
 
     command void Flood.init() {
-        call fMap.clear();          // Clear hashmap entries on startup
+        call Hashmap.clear();          // Clear hashmap entries on startup
         sequenceNum = 0;
         dbg(FLOODING_CHANNEL, "Flood module initialized\n");
     }
@@ -38,7 +38,6 @@ implementation {
         dbg(FLOODING_CHANNEL, "DESTINATION %d\n", destination);
         makePack(&pck, TOS_NODE_ID, destination, 10, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(pck, AM_BROADCAST_ADDR);
-        // sequenceNum++;
     }
 
     command void Flood.flood(pack* myMsg) {
@@ -47,7 +46,7 @@ implementation {
         // dbg(FLOODING_CHANNEL, "Received packet: Src: %d, Dest: %d, Seq: %d, TTL: %d, Protocol: %d\n",
         //     myMsg->src, myMsg->dest, myMsg->seq, myMsg->TTL, myMsg->protocol);
 
-        if (call fMap.contains(key)) { 
+        if (call Hashmap.contains(key)) { 
             dbg(FLOODING_CHANNEL, "Packet already seen!\n");
             // dbg(FLOODING_CHANNEL, "Packet already seen! Src: %d, Seq: %d\n", myMsg->src, myMsg->seq);
             return;
@@ -64,9 +63,8 @@ implementation {
                 dbg(FLOODING_CHANNEL, "Ping received!\n");
                 // dbg(FLOODING_CHANNEL, "Ping received for this node. Src: %d, Seq: %d\n", myMsg->src, myMsg->seq);
                 logPack(myMsg);
-                call fMap.insert(key, 1);
+                call Hashmap.insert(key, 1);
 
-                // Increment the sequence number for the reply
                 sequenceNum++;
 
                 // Send a reply back to the original sender
@@ -79,13 +77,13 @@ implementation {
                 // dbg(FLOODING_CHANNEL, "Ping Reply received! Src: %d, Seq: %d\n", myMsg->src, myMsg->seq);
 
                 logPack(myMsg);
-                call fMap.insert(key, 1);
+                call Hashmap.insert(key, 1);
             }
             return;
         } else {
             // Forward the packet
             myMsg->TTL -= 1;
-            call fMap.insert(key, 1);
+            call Hashmap.insert(key, 1);
             dbg(FLOODING_CHANNEL, "Forwarding Paket!\n");
             // dbg(FLOODING_CHANNEL, "Forwarding packet: Src: %d, Dest: %d, Seq: %d, TTL: %d\n",
             //     myMsg->src, myMsg->dest, myMsg->seq, myMsg->TTL);

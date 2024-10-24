@@ -7,7 +7,7 @@ module NDiscP {
     provides interface NDisc;
     uses interface Timer<TMilli> as Timer;
     uses interface SimpleSend as Sender;
-    uses interface Hashmap<uint32_t> as ndMap;
+    uses interface Hashmap<uint32_t> as Hashmap;
     uses interface Routing;
 }
 
@@ -39,8 +39,6 @@ implementation {
         memcpy(Package->payload, payload, length);
     }
 
-
-
     command void NDisc.start() {
         call Timer.startPeriodic(5000); // Start periodic timer every 5 second
         dbg(NEIGHBOR_CHANNEL, "Starting NDiscovery!\n");
@@ -58,24 +56,20 @@ implementation {
         bool isActive;
         
         if(ndMsg->protocol == PROTOCOL_PING && ndMsg->TTL > 0) {
-            // dbg(NEIGHBOR_CHANNEL, "BEFORE: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
-            // ndMsg->dest = ndMsg->src;
-            ndMsg->src = TOS_NODE_ID; 
-            // dbg(NEIGHBOR_CHANNEL, "AFTER: src is %d and dest is %d\n", ndMsg->src, ndMsg->dest);
-
-            ndMsg->TTL -= 1;     // decrements time to live //we decided to use fixed TTL=255
+            ndMsg->src = TOS_NODE_ID;
+            ndMsg->TTL -= 1;
             ndMsg->protocol = PROTOCOL_PINGREPLY;
 
             call Sender.send(*ndMsg, AM_BROADCAST_ADDR);
-            // makePack(&pck, ndMsg->dest, ndMsg->src, ndMsg->TTL, PROTOCOL_PINGREPLY, 0, (uint8_t *) ndMsg->payload, PACKET_MAX_PAYLOAD_SIZE);
         } else if(ndMsg->protocol == PROTOCOL_PINGREPLY && ndMsg->dest == 0) {
             dbg(NEIGHBOR_CHANNEL,"Found Neighbor %d\n", ndMsg->src);
 
-            if (call ndMap.contains(ndMsg->src)) {
-                packedData = call ndMap.get(ndMsg->src);
+            if (call Hashmap.contains(ndMsg->src)) {
+                packedData = call Hashmap.get(ndMsg->src);
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
             } else {
                 call Routing.foundNeighbor(); // comment line out mayybe
+
                 totalPacketsSent = 0;
                 totalPacketsReceived = 0;
                 missedResponses = 0;
@@ -87,15 +81,15 @@ implementation {
             totalPacketsReceived++;
             missedResponses = 0;
             packedData = packNeighborData(totalPacketsSent, totalPacketsReceived, missedResponses, isActive);
-            call ndMap.insert(ndMsg->src, packedData);
+            call Hashmap.insert(ndMsg->src, packedData);
             
-            call NDisc.print();  // Print neighbor table
+            call NDisc.print();
         }
     }
 
     command void NDisc.print() {
         uint16_t i = 0;
-        uint32_t* keys = call ndMap.getKeys();
+        uint32_t* keys = call Hashmap.getKeys();
         
         uint32_t packedData;
         uint16_t totalPacketsSent, totalPacketsReceived;
@@ -105,9 +99,9 @@ implementation {
         float linkQuality;
 
         dbg(NEIGHBOR_CHANNEL, "Printing Neighbors of %d:\n", TOS_NODE_ID);
-        for (i = 0; i < call ndMap.size(); i++) {
+        for (i = 0; i < call Hashmap.size(); i++) {
             if (keys[i] != 0) {
-                packedData = call ndMap.get(keys[i]);
+                packedData = call Hashmap.get(keys[i]);
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
                 linkQuality = (totalPacketsSent == 0) ? 0.0 :
                 (float)totalPacketsReceived / totalPacketsSent;
@@ -119,7 +113,7 @@ implementation {
 
     event void Timer.fired() {
         uint16_t i = 0;
-        uint32_t* keys = call ndMap.getKeys();
+        uint32_t* keys = call Hashmap.getKeys();
 
         uint32_t packedData;
         uint16_t totalPacketsSent, totalPacketsReceived;
@@ -129,15 +123,15 @@ implementation {
         uint8_t payload = 0;
 
         // Check the status of each neighbor
-        for (i = 0; i < call ndMap.size(); i++) {
+        for (i = 0; i < call Hashmap.size(); i++) {
             if (keys[i] != 0) {
-                packedData = call ndMap.get(keys[i]);
+                packedData = call Hashmap.get(keys[i]);
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
 
                 if (missedResponses >= 5) {
                     isActive = FALSE;
                     dbg(NEIGHBOR_CHANNEL, "Neighbor %d is inactive, removing from table.\n", keys[i]);
-                    call ndMap.remove(keys[i]);
+                    call Hashmap.remove(keys[i]);
                     call Routing.lostNeighbor(keys[i]); // comment line out maybe
                     dbg(NEIGHBOR_CHANNEL, "Printing Neighbors again after removing a neighbor.\n");
                     call NDisc.print();
@@ -145,7 +139,7 @@ implementation {
                     missedResponses++;
                     totalPacketsSent++;
                     packedData = packNeighborData(totalPacketsSent, totalPacketsReceived, missedResponses, isActive);
-                    call ndMap.insert(keys[i], packedData);
+                    call Hashmap.insert(keys[i], packedData);
                 }
             }
         }
@@ -156,12 +150,11 @@ implementation {
     }
 
     command uint32_t* NDisc.getNeighbors() {
-        return call ndMap.getKeys();
+        return call Hashmap.getKeys();
     }
 
     command uint16_t NDisc.getSize() {
-        return call ndMap.size();
+        return call Hashmap.size();
     }
-
 }
 
