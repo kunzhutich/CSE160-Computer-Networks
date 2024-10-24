@@ -400,7 +400,28 @@ implementation{
         memcpy(Package->payload, payload, length);
     }
 
-        command void Routing.start(){
+    void init() {
+        uint16_t i;
+
+        // Clear the routing table by setting initial values
+        for(i = 0; i < maxRoutes; i++) {
+            routingTable[i].nextHop = 0;
+            routingTable[i].cost = maxCost;  // Set to maximum cost initially
+        }
+
+        // Clear the sequence number hashmap and link-state hashmap
+        call seqHashmap.clear();  // Clear src-seq hashmap
+        call linkStateMap.clear();  // Clear link-state hashmap
+
+        // Initialize the routing table for this node
+        routingTable[TOS_NODE_ID].nextHop = TOS_NODE_ID;  // The node should always route to itself
+        routingTable[TOS_NODE_ID].cost = 0;  // Cost to itself is zero
+        numNodes = 1;  // Start with one node (this node)
+        numRoutes = 1;  // One valid route (to itself)
+    }
+
+
+    command void Routing.start(){
         init();
         call Timer.startOneShot(30000);
         dbg(ROUTING_CHANNEL, "Starting Routing\n");
@@ -441,36 +462,6 @@ implementation{
 
         call Sender.send(*myMsg, AM_BROADCAST_ADDR);
     }
-
-    // bool updateState(pack* myMsg) {
-    //     uint16_t i;
-    //     LSP *lsp = (LSP*)myMsg->payload;
-    //     bool stateChanged = FALSE;
-    //     LinkInfo info;
-    //     uint32_t linkKey;
-
-    //     for(i = 0; i < 10; i++) {
-    //         linkKey = createLinkKey(myMsg->src, lsp[i].neighbor);
-
-    //         if (call linkStateMap.contains(linkKey)) {
-    //             // Get the current link information
-    //             info = call linkStateMap.get(linkKey);
-
-    //             // If the cost has changed, update it
-    //             if (info.cost != lsp[i].cost) {
-    //                 info.cost = lsp[i].cost;
-    //                 call linkStateMap.insert(linkKey, info); // Update the hashmap
-    //                 stateChanged = TRUE;
-    //             }
-    //         } else {
-    //             // Insert a new entry if it doesn't exist
-    //             info.cost = lsp[i].cost;
-    //             call linkStateMap.insert(linkKey, info);
-    //             stateChanged = TRUE;
-    //         }
-    //     }
-    //     return stateChanged;
-    // }
 
     bool updateState(pack* myMsg) {
         uint16_t i;
@@ -545,6 +536,149 @@ implementation{
         }
     }
 
+    void djikstra() {
+        uint16_t i;
+        uint8_t currentNode = TOS_NODE_ID;
+        uint8_t minCost;
+        uint8_t nextNode = 0;
+        uint8_t prev[maxRoutes];
+        uint8_t cost[maxRoutes];
+        bool visited[maxRoutes];
+
+        // Initialize
+        for (i = 0; i < maxRoutes; i++) {
+            cost[i] = maxCost;
+            prev[i] = 0;
+            visited[i] = FALSE;
+        }
+
+        cost[currentNode] = 0;
+        dbg(ROUTING_CHANNEL, "Dijkstra starting at node %d\n", currentNode);
+
+        while (TRUE) {
+            minCost = maxCost;
+
+            // Find the next node with the smallest cost
+            for (i = 1; i < maxRoutes; i++) {
+                if (!visited[i] && cost[i] < minCost) {
+                    minCost = cost[i];
+                    nextNode = i;
+                }
+            }
+
+            if (minCost == maxCost) {
+                break;  // All reachable nodes have been visited
+            }
+
+            visited[nextNode] = TRUE;
+            dbg(ROUTING_CHANNEL, "Visiting node %d, cost = %d\n", nextNode, minCost);
+
+            // Update costs for neighbors of the current node
+            for (i = 1; i < maxRoutes; i++) {
+                uint32_t linkKey = createLinkKey(nextNode, i);
+                if (call linkStateMap.contains(linkKey)) {
+                    uint8_t linkCost = call linkStateMap.get(linkKey);
+                    if (!visited[i] && cost[nextNode] + linkCost < cost[i]) {
+                        cost[i] = cost[nextNode] + linkCost;
+                        prev[i] = nextNode;
+                        dbg(ROUTING_CHANNEL, "Updating cost for node %d, new cost = %d\n", i, cost[i]);
+                    }
+                }
+            }
+        }
+
+        // Update routing table with shortest paths
+        for (i = 1; i < maxRoutes; i++) {
+            if (cost[i] < maxCost) {
+                uint8_t nextHop = i;
+                while (prev[nextHop] != currentNode) {
+                    nextHop = prev[nextHop];
+                }
+                addRoute(i, nextHop, cost[i]);
+                dbg(ROUTING_CHANNEL, "Added route: Dest = %d, NextHop = %d, Cost = %d\n", i, nextHop, cost[i]);
+            } else {
+                removeRoute(i);  // If a node is unreachable, remove its route
+            }
+        }
+    }
+
+
+    // void djikstra() {
+    //     uint16_t i, j;
+    //     uint8_t currentNode, minCost, nextNode;
+    //     uint8_t cost[maxRoutes];  // Array to store the shortest path cost to each node
+    //     uint8_t prev[maxRoutes];  // Array to store the previous node in the shortest path
+    //     bool visited[maxRoutes];  // Array to track whether a node has been visited
+
+    //     // Initialize all costs to maxCost (infinity) and visited to FALSE
+    //     for(i = 0; i < maxRoutes; i++) {
+    //         cost[i] = maxCost;
+    //         prev[i] = 0;
+    //         visited[i] = FALSE;
+    //     }
+
+    //     // Cost to reach self is 0
+    //     cost[TOS_NODE_ID] = 0;
+
+    //     // Loop to find the shortest path to all nodes
+    //     for(i = 0; i < maxRoutes; i++) {
+    //         minCost = maxCost;
+    //         currentNode = 0;
+
+    //         // Find the unvisited node with the smallest known cost
+    //         for(j = 0; j < maxRoutes; j++) {
+    //             if(!visited[j] && cost[j] < minCost) {
+    //                 minCost = cost[j];
+    //                 currentNode = j;
+    //             }
+    //         }
+
+    //         // If no node found, we are done
+    //         if(currentNode == 0 || minCost == maxCost) {
+    //             break;
+    //         }
+
+    //         // Mark the current node as visited
+    //         visited[currentNode] = TRUE;
+
+    //         // Update the costs of neighboring nodes
+    //         for(j = 0; j < maxRoutes; j++) {
+    //             if(j != currentNode) {
+    //                 uint32_t linkKey = createLinkKey(currentNode, j);
+
+    //                 if(call linkStateMap.contains(linkKey)) {
+    //                     uint8_t linkCost = call linkStateMap.get(linkKey);
+
+    //                     // Relax the edge: check if a shorter path is found
+    //                     if(cost[currentNode] + linkCost < cost[j]) {
+    //                         cost[j] = cost[currentNode] + linkCost;
+    //                         prev[j] = currentNode;  // Update the previous node
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     // Update the routing table with the results
+    //     for(i = 0; i < maxRoutes; i++) {
+    //         if(i == TOS_NODE_ID) continue;  // Skip self
+
+    //         if(cost[i] != maxCost) {
+    //             // Trace the path back to the source to find the next hop
+    //             nextNode = i;
+    //             while(prev[nextNode] != TOS_NODE_ID) {
+    //                 nextNode = prev[nextNode];
+    //             }
+
+    //             // Update the routing table
+    //             addRoute(i, nextNode, cost[i]);
+    //         } else {
+    //             // No valid route, remove the entry
+    //             removeRoute(i);
+    //         }
+    //     }
+    // }
+
 
     event void Timer.fired() {
         if(call Timer.isOneShot()) {
@@ -598,34 +732,17 @@ implementation{
         }
     }
 
+    void addRoute(uint8_t dest, uint8_t nextHop, uint8_t cost) {
+        if (cost < routingTable[dest].cost) {  // Only update if the new cost is lower
+            routingTable[dest].nextHop = nextHop;  // Set the next hop for this destination
+            routingTable[dest].cost = cost;        // Update the cost for this destination
+            dbg(ROUTING_CHANNEL, "Route added: Dest = %d, NextHop = %d, Cost = %d\n", dest, nextHop, cost);
+        }
+    }
 
-
-    // command void Routing.foundNeighbor() {
-    //     uint32_t* neighbors = call NDisc.getNeighbors();
-    //     uint16_t nSize = call NDisc.getSize();
-    //     uint16_t i;
-        
-    //     for(i = 0; i < nSize; i++) {
-    //         uint32_t linkKey = createLinkKey(TOS_NODE_ID, neighbors[i]);
-    //         LinkInfo info = { .cost = 1 }; // Assign a cost of 1 for direct neighbors
-    //         call linkStateMap.insert(linkKey, info);
-    //     }
-
-    //     sendLSP(0);  // Send Link-State Packet
-    //     djikstra();  // Run Dijkstra's algorithm to update routes
-    // } 
-
-    // command void Routing.lostNeighbor(uint16_t lost) {
-    //     uint32_t linkKey = createLinkKey(TOS_NODE_ID, lost);
-    //     dbg(ROUTING_CHANNEL, "Lost Neighbor %u\n", lost);
-        
-    //     if(call linkStateMap.contains(linkKey)) {
-    //         LinkInfo info = { .cost = maxCost };  // Set cost to maximum (infinity)
-    //         call linkStateMap.insert(linkKey, info);  // Update the link state
-            
-    //         sendLSP(lost);  // Notify other nodes
-    //         djikstra();  // Recalculate routes
-    //     }
-    // }
-
+    void removeRoute(uint8_t dest) {
+        routingTable[dest].nextHop = 0;    // Reset next hop to 0 (invalid)
+        routingTable[dest].cost = maxCost; // Set the cost to maxCost (infinity)
+        dbg(ROUTING_CHANNEL, "Route removed: Dest = %d\n", dest);
+    }
 }
