@@ -40,13 +40,13 @@ implementation {
     }
 
     command void NDisc.start() {
-        call Timer.startPeriodic(5000); // Start periodic timer every 5 second
-        dbg(NEIGHBOR_CHANNEL, "Starting NDiscovery!\n");
+        call Timer.startPeriodic(5000);
+        dbg(ROUTING_CHANNEL, "Starting NDiscovery!\n");
     }
 
     command void NDisc.stop() {
         call Timer.stop(); // func to stop neighbor discovery
-        dbg(NEIGHBOR_CHANNEL, "Stopping NDiscovery!\n");
+        dbg(ROUTING_CHANNEL, "Stopping NDiscovery!\n");
     }
 
     command void NDisc.nDiscovery(pack* ndMsg) {
@@ -62,13 +62,17 @@ implementation {
 
             call Sender.send(*ndMsg, AM_BROADCAST_ADDR);
         } else if(ndMsg->protocol == PROTOCOL_PINGREPLY && ndMsg->dest == 0) {
+            // dbg(NEIGHBOR_CHANNEL, "PINGREPLY received from %d\n", ndMsg->src);
             dbg(NEIGHBOR_CHANNEL,"Found Neighbor %d\n", ndMsg->src);
+            call Routing.foundNeighbor(); // comment line out mayybe
 
             if (call Hashmap.contains(ndMsg->src)) {
+                // dbg(NEIGHBOR_CHANNEL, "Neighbor %d already in hashmap\n", ndMsg->src);
                 packedData = call Hashmap.get(ndMsg->src);
                 unpackNeighborData(packedData, &totalPacketsSent, &totalPacketsReceived, &missedResponses, &isActive);
             } else {
-                call Routing.foundNeighbor(); // comment line out mayybe
+                // dbg(NEIGHBOR_CHANNEL, "Adding neighbor %d to hashmap\n", ndMsg->src);
+                call Hashmap.insert(ndMsg->src, 1);
 
                 totalPacketsSent = 0;
                 totalPacketsReceived = 0;
@@ -133,6 +137,7 @@ implementation {
                     dbg(NEIGHBOR_CHANNEL, "Neighbor %d is inactive, removing from table.\n", keys[i]);
                     call Hashmap.remove(keys[i]);
                     call Routing.lostNeighbor(keys[i]); // comment line out maybe
+
                     dbg(NEIGHBOR_CHANNEL, "Printing Neighbors again after removing a neighbor.\n");
                     call NDisc.print();
                 } else {
@@ -157,4 +162,3 @@ implementation {
         return call Hashmap.size();
     }
 }
-

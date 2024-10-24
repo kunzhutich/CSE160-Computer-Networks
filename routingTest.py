@@ -42,7 +42,7 @@ def main():
     s.runTime(30)
 
 
-    s.runTime(10)
+    s.runTime(40)
 
 
 if __name__ == '__main__':
