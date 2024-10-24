@@ -8,4 +8,5 @@ interface Routing{
     command void lostNeighbor(uint16_t lost); 
     command void foundNeighbor();
     command void printTable();
+    command uint8_t getNextHop(uint16_t dest);
 }

@@ -24,4 +24,7 @@ implementation {
 
     components new HashmapC(uint16_t, 20);
     RoutingP.Hashmap -> HashmapC;
+
+    components IPC;
+    RoutingP.IP -> IPC;
 }

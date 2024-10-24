@@ -13,6 +13,7 @@ module RoutingP {
     uses interface Flood;
     uses interface Timer<TMilli> as Timer;
     uses interface NDisc;
+    uses interface IP;
 }
 
 implementation{
@@ -82,16 +83,16 @@ implementation{
             return;
         }
 
-        if(routingTable[myMsg->dest].cost < maxCost) {
-            nextHop = routingTable[myMsg->dest].nextHop;
-            dbg(ROUTING_CHANNEL, "Node %d routing to %d\n", TOS_NODE_ID, nextHop);
-            logPack(myMsg);
-            call Sender.send(*myMsg, nextHop);
-        } else {
-            dbg(ROUTING_CHANNEL, "Not most efficient route. Packet dropped!\n");
-            logPack(myMsg);
-        }
-    
+        // if(routingTable[myMsg->dest].cost < maxCost) {
+        //     nextHop = routingTable[myMsg->dest].nextHop;
+        //     dbg(ROUTING_CHANNEL, "Node %d routing to %d\n", TOS_NODE_ID, nextHop);
+        //     logPack(myMsg);
+        //     call Sender.send(*myMsg, nextHop);
+        // } else {
+        //     dbg(ROUTING_CHANNEL, "Not most efficient route. Packet dropped!\n");
+        //     logPack(myMsg);
+        // }
+        call IP.send(myMsg);
     }
 
     command void Routing.linkState(pack* myMsg) {
@@ -203,7 +204,9 @@ implementation{
             counter++;
             if(counter == 10 || i == nSize - 1) {
                 // Send LSP to each neighbor                
-                makePack(&pck, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
+                // makePack(&pck, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, &linkStatePayload, sizeof(linkStatePayload));
+                makePack(&pck, TOS_NODE_ID, 0, 17, PROTOCOL_LINKSTATE, sequenceNum++, (uint8_t *)linkStatePayload, sizeof(linkStatePayload));
+
                 call Sender.send(pck, AM_BROADCAST_ADDR);
                 // Zero the array
                 while(counter > 0) {
@@ -306,5 +309,12 @@ implementation{
         routingTable[dest].nextHop = 0;
         routingTable[dest].cost = maxCost;
         numRoutes--;
+    }
+
+    command uint8_t Routing.getNextHop(uint16_t dest) {
+        if (routingTable[dest].cost < maxCost) {
+            return routingTable[dest].nextHop;
+        }
+        return 0;  // Return 0 if no valid route exists
     }
 }
