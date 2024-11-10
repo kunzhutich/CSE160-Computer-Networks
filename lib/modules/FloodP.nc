@@ -2,6 +2,7 @@
 #include "../../includes/channels.h"
 #include "../../includes/packet.h"
 #include "../../includes/protocol.h"
+#include "../../includes/utils.h"
 
 
 module FloodP {
@@ -13,19 +14,6 @@ module FloodP {
 implementation {
     pack pck;
     uint16_t sequenceNum = 0;
-    uint32_t createKey(uint16_t src, uint16_t seq) {
-        return ((uint32_t)src << 16) | (uint32_t)seq;
-    }
-
-    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
-        Package->src = src;
-        Package->dest = dest;
-        Package->TTL = TTL;
-        Package->seq = seq;
-        Package->protocol = protocol;
-        memcpy(Package->payload, payload, length);
-    }
-
 
     command void Flood.init() {
         call Hashmap.clear();          // Clear hashmap entries on startup
@@ -41,7 +29,7 @@ implementation {
     }
 
     command void Flood.flood(pack* myMsg) {
-        uint32_t key = createKey(myMsg->src, myMsg->seq);
+        uint32_t key = createSeqKey(myMsg->src, myMsg->seq);
 
         // dbg(FLOODING_CHANNEL, "Received packet: Src: %d, Dest: %d, Seq: %d, TTL: %d, Protocol: %d\n",
         //     myMsg->src, myMsg->dest, myMsg->seq, myMsg->TTL, myMsg->protocol);
@@ -92,6 +80,4 @@ implementation {
             // dbg(FLOODING_CHANNEL, "Packet forwarded\n");
         }
     }
-
-    
 }

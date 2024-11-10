@@ -80,6 +80,7 @@ implementation{
             call NDisc.nDiscovery(myMsg);
         } else {
             call Routing.routed(myMsg);
+            // call Flood.flood(myMsg);
         }
         return msg;
     }
@@ -89,7 +90,7 @@ implementation{
         dbg(GENERAL_CHANNEL, "PING EVENT \n");
         call Routing.ping(destination, payload);
 
-        // Clear hashmap if needed before sending a new ping
+        // // Clear hashmap if needed before sending a new ping
         // call Flood.init();
 
         // makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);

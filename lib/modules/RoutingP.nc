@@ -2,6 +2,7 @@
 #include "../../includes/channels.h"
 #include "../../includes/packet.h"
 #include "../../includes/protocol.h"
+#include "../../includes/utils.h"
 
 
 module RoutingP {
@@ -16,14 +17,6 @@ module RoutingP {
 }
 
 implementation{
-    uint32_t createSeqKey(uint16_t src, uint16_t seq) {
-        return ((uint32_t)src << 16) | (uint32_t)seq;
-    }
-    
-    uint32_t createLinkKey(uint16_t src, uint16_t dest) {
-        return ((uint32_t)src << 16) | (uint32_t)dest;
-    }
-
     uint8_t sequenceNum = 0;
     uint16_t numNodes = 0;
     uint16_t numRoutes = 0;
