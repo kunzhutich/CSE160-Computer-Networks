@@ -1,8 +1,11 @@
-# Binaries
+# Ignoring binary files
 *.pyc
-simbuild/*
-build/*
+
+# Ignoring directories with sim and build outputs
+simbuild/
+build/
+
+# Ignoring output and temp files from TOSSIM and simulation
 *.xml
-TOSSIM.py
 _TOSSIMmodule.so
 *.o
