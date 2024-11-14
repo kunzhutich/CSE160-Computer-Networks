@@ -14,6 +14,9 @@ enum socket_state{
     ESTABLISHED,
     SYN_SENT,
     SYN_RCVD,
+    FIN_WAIT,
+    FIN_RCVD,
+    CLOSED_WAIT
 };
 
 
@@ -37,8 +40,12 @@ typedef struct socket_store_t{
     socket_port_t src;
     socket_addr_t dest;
 
+    uint16_t seq_num;        // Sequence number for sent packets
+    uint16_t ack_num;        // Acknowledgment number for received packets
+
     // This is the sender portion.
     uint8_t sendBuff[SOCKET_BUFFER_SIZE];
+    uint8_t recvBuff[SOCKET_BUFFER_SIZE];
     uint8_t lastWritten;
     uint8_t lastAck;
     uint8_t lastSent;

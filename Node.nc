@@ -118,6 +118,12 @@ implementation{
 
     event void CommandHandler.setAppClient(){}
 
+    event void CommandHandler.close() {
+        dbg(GENERAL_CHANNEL, "Closing connection as commanded.\n");
+        // Add any logic you want for handling the close operation
+        // This may include resetting socket or transport state if applicable
+    }
+
     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
         Package->src = src;
         Package->dest = dest;

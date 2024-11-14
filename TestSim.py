@@ -13,6 +13,10 @@ class TestSim:
     CMD_PING = 0
     CMD_NEIGHBOR_DUMP = 1
     CMD_ROUTE_DUMP=3
+    CMD_TEST_SERVER = 4
+    CMD_TEST_CLIENT = 5
+    CMD_KILL = 6
+
 
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL="command";
@@ -128,6 +132,24 @@ class TestSim:
     def addChannel(self, channelName, out=sys.stdout):
         print 'Adding Channel', channelName;
         self.t.addChannel(channelName, out);
+
+    def cmdTestServer(self, address, port):
+        """Sets up a server on the specified address and port."""
+        print(f"Setting up the server on Node {address} at port {port}...")
+        self.sendCMD(self.CMD_TEST_SERVER, address, chr(port))
+
+    def cmdTestClient(self, dest, srcPort, destPort, transfer):
+        """Command Node to act as client and connect to server."""
+        self.sendCMD(self.CMD_TEST_CLIENT, dest, chr(srcPort) + chr(destPort) + chr(transfer))
+
+    def cmdClientSend(self, source, srcPort, destPort, message):
+        """Command a client node to send data to a server."""
+        payloadStr = chr(destPort) + message
+        self.sendCMD(self.CMD_TEST_CLIENT, source, payloadStr)
+
+    def cmdKillClient(self, client_address, dest, srcPort, destPort):
+        """Command Node to close connection."""
+        self.sendCMD(self.CMD_KILL, client_address, chr(srcPort) + chr(destPort) + chr(dest))
 
 def main():
     s = TestSim();
