@@ -5,6 +5,12 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+// should put the following in another header later
+#define SYN 0x02
+#define ACK 0x10
+#define FIN 0x01
+#define PSH 0x08
+
 //PROTOCOLS
 enum{
 	PROTOCOL_PING = 0,

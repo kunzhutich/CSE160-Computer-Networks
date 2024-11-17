@@ -107,28 +107,29 @@
 
 
 
-
 #include "../../includes/CommandMsg.h"
 #include "../../includes/command.h"
 #include "../../includes/channels.h"
 #include "../../includes/socket.h"
 
+#define NULL_SOCKET -1
+#define ATTEMPT_CONNECTION_TIME 1000  // might adjust this later
+#define TRANSFER_SIZE 128  // shoudn't adjust right?
+
+
 module CommandHandlerP {
-   provides interface CommandHandler;
-   uses interface Receive;
-   uses interface Pool<message_t>;
-   uses interface Queue<message_t*>;
-   uses interface Packet;
-   uses interface Transport;
+    provides interface CommandHandler;
+    uses interface Receive;
+    uses interface Pool<message_t>;
+    uses interface Queue<message_t*>;
+    uses interface Packet;
+    uses interface Transport;
+    uses interface Timer<TMilli> as ConnectionTimer;
 }
 
 implementation {
-    // Global variables to store socket information for server and client
-    socket_t serverSocket;
-    socket_t clientSocket;
-    socket_addr_t serverAddress;
-    socket_addr_t clientAddress;
-    bool isConnected = FALSE;
+    socket_t serverFd = -1;  // Server socket descriptor
+    socket_t clientFd = -1;  // Client socket descriptor
 
     task void processCommand() {
         if (!call Queue.empty()) {
@@ -138,107 +139,64 @@ implementation {
             message_t *raw_msg;
             void *payload;
 
-            // Pop message out of queue.
             raw_msg = call Queue.dequeue();
             payload = call Packet.getPayload(raw_msg, sizeof(CommandMsg));
 
-            // Check to see if the packet is valid.
             if (!payload) {
                 call Pool.put(raw_msg);
                 post processCommand();
                 return;
             }
-            // Change it to our type.
-            msg = (CommandMsg*) payload;
 
+            msg = (CommandMsg*) payload;
             dbg(COMMAND_CHANNEL, "A Command has been Issued.\n");
             buff = (uint8_t*) msg->payload;
             commandID = msg->id;
 
-            // Find out which command was called and call related command
-            switch(commandID) {
-                case CMD_PING:
-                    dbg(COMMAND_CHANNEL, "Command Type: Ping\n");
-                    signal CommandHandler.ping(buff[0], &buff[1]);
-                    break;
-
-                case CMD_NEIGHBOR_DUMP:
-                    dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
-                    signal CommandHandler.printNeighbors();
-                    break;
-
-                case CMD_LINKSTATE_DUMP:
-                    dbg(COMMAND_CHANNEL, "Command Type: Link State Dump\n");
-                    signal CommandHandler.printLinkState();
-                    break;
-
-                case CMD_ROUTETABLE_DUMP:
-                    dbg(COMMAND_CHANNEL, "Command Type: Route Table Dump\n");
-                    signal CommandHandler.printRouteTable();
-                    break;
-
-                case CMD_TEST_SERVER: {
-                    dbg(COMMAND_CHANNEL, "Command Type: Server Setup\n");
-
-                    // Initialize server socket and address
-                    serverSocket = call Transport.socket();
-                    serverAddress.port = buff[0];
-                    serverAddress.addr = TOS_NODE_ID;
-
-                    // Bind the server socket
-                    if (call Transport.bind(serverSocket, &serverAddress) == SUCCESS) {
-                        dbg(COMMAND_CHANNEL, "Server bound to port %d\n", buff[0]);
-                        // Server listening and accepting connections
-                        if (call Transport.listen(serverSocket) == SUCCESS) {
-                            dbg(COMMAND_CHANNEL, "Server listening on port %d\n", serverAddress.port);
+            switch (commandID) {
+                case CMD_TEST_SERVER:
+                    dbg(COMMAND_CHANNEL, "Command Type: Test Server\n");
+                    serverFd = call Transport.socket();
+                    if (serverFd != NULL_SOCKET) {
+                        socket_addr_t addr = { .port = buff[0] };
+                        if (call Transport.bind(serverFd, &addr) == SUCCESS) {
+                            call Transport.listen(serverFd);
+                            dbg(COMMAND_CHANNEL, "Server listening on port %d\n", addr.port);
+                            call ConnectionTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
                         }
-                    } else {
-                        dbg(COMMAND_CHANNEL, "Failed to bind server to port %d\n", buff[0]);
                     }
                     break;
-                }
 
-                case CMD_TEST_CLIENT: {
-                    dbg(COMMAND_CHANNEL, "Command Type: Client Setup\n");
+                case CMD_TEST_CLIENT:
 
-                    // Initialize client socket and address
-                    clientSocket = call Transport.socket();
-                    clientAddress.port = buff[1]; // Source port
-                    clientAddress.addr = TOS_NODE_ID;
-
-                    // Server address to connect to
-                    serverAddress.port = buff[2];
-                    serverAddress.addr = buff[0]; // Destination address
-
-                    // Bind client socket
-                    if (call Transport.bind(clientSocket, &clientAddress) == SUCCESS) {
-                        dbg(COMMAND_CHANNEL, "Client bound to port %d\n", clientAddress.port);
-
-                        // Attempt to connect
-                        if (call Transport.connect(clientSocket, &serverAddress) == SUCCESS) {
-                            dbg(COMMAND_CHANNEL, "Client connected to server at %d:%d\n", serverAddress.addr, serverAddress.port);
-                            isConnected = TRUE;
-                        } else {
-                            dbg(COMMAND_CHANNEL, "Client failed to connect to server at %d:%d\n", serverAddress.addr, serverAddress.port);
+                    dbg(COMMAND_CHANNEL, "Command Type: Test Client\n");
+                    clientFd = call Transport.socket();
+                    if (clientFd != NULL_SOCKET) {
+                        socket_addr_t srcAddr = { .port = buff[1] };
+                        socket_addr_t destAddr = { .addr = buff[0], .port = buff[2] };
+                        if (call Transport.bind(clientFd, &srcAddr) == SUCCESS &&
+                            call Transport.connect(clientFd, &destAddr) == SUCCESS) {
+                            uint8_t data[TRANSFER_SIZE] = {0};
+                            
+                            dbg(COMMAND_CHANNEL, "Client connected to server %d on port %d\n", destAddr.addr, destAddr.port);
+                            // Send initial data after connection is established
+                            // data[TRANSFER_SIZE] = {0};
+                            call Transport.write(clientFd, data, TRANSFER_SIZE);
                         }
-                    } else {
-                        dbg(COMMAND_CHANNEL, "Failed to bind client to port %d\n", clientAddress.port);
                     }
                     break;
-                }
 
                 case CMD_KILL:
-                    dbg(COMMAND_CHANNEL, "Command Type: Close Connection\n");
-                    if (isConnected) {
-                        // Close client socket connection gracefully
-                        if (call Transport.close(clientSocket) == SUCCESS) {
-                            dbg(COMMAND_CHANNEL, "Connection closed for client on port %d\n", clientAddress.port);
-                            isConnected = FALSE;
-                        } else {
-                            dbg(COMMAND_CHANNEL, "Failed to close connection for client on port %d\n", clientAddress.port);
-                        }
-                    } else {
-                        dbg(COMMAND_CHANNEL, "No active connection to close.\n");
+                    dbg(COMMAND_CHANNEL, "Command Type: Kill\n");
+                    if (clientFd != -1) {
+                        call Transport.close(clientFd);
+                        dbg(COMMAND_CHANNEL, "Client connection closed.\n");
+                        clientFd = -1;
+                    }
+                    if (serverFd != -1) {
+                        call Transport.close(serverFd);
+                        dbg(COMMAND_CHANNEL, "Server connection closed.\n");
+                        serverFd = -1;
                     }
                     break;
 
@@ -261,5 +219,15 @@ implementation {
             return call Pool.get();
         }
         return raw_msg;
+    }
+
+    event void ConnectionTimer.fired() {
+        socket_t newFd = call Transport.accept(serverFd);
+        if (newFd != NULL_SOCKET) {
+            dbg(COMMAND_CHANNEL, "New connection accepted on server.\n");
+            serverFd = newFd;  // Update to handle new connection
+        } else {
+            dbg(COMMAND_CHANNEL, "No connection available at timer expiration.\n");
+        }
     }
 }

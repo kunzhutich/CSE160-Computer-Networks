@@ -22,15 +22,18 @@ implementation {
     Node -> MainC.Boot;
 
     Node.Receive -> GeneralReceive;
+    Node.Receive -> TransportP.Receive;
 
     components ActiveMessageC;
     Node.AMControl -> ActiveMessageC;
 
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;
+    TransportP.SimpleSend -> SimpleSendC;
 
     components CommandHandlerC;
     Node.CommandHandler -> CommandHandlerC;
+    CommandHandlerC.Transport -> TransportP;
     
     components NDiscC;
     Node.NDisc -> NDiscC;
@@ -40,4 +43,7 @@ implementation {
 
     components RoutingC;
     Node.Routing -> RoutingC;
+
+    components TransportP;
+    CommandHandlerP.Transport -> TransportP;
 }
