@@ -135,7 +135,6 @@ class TestSim:
 
     def cmdTestServer(self, address, port):
         """Sets up a server on the specified address and port."""
-        print(f"Setting up the server on Node {address} at port {port}...")
         self.sendCMD(self.CMD_TEST_SERVER, address, chr(port))
 
     def cmdTestClient(self, dest, srcPort, destPort, transfer):
