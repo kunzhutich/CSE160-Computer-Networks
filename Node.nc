@@ -26,6 +26,7 @@ module Node{
     uses interface NDisc;
     uses interface Flood;
     uses interface Routing;
+    uses interface Transport;
 }
 
 implementation{
@@ -113,6 +114,14 @@ implementation{
     event void CommandHandler.setTestServer(){}
 
     event void CommandHandler.setTestClient(){}
+
+    event void CommandHandler.clientWrite(uint16_t dest, uint8_t *payload) {
+        call Transport.write(dest, payload, strlen(payload));
+    }
+
+    event void CommandHandler.clientClose(uint16_t dest) {
+        call Transport.close(dest);
+    }
 
     event void CommandHandler.setAppServer(){}
 

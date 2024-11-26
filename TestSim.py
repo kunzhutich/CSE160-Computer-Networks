@@ -13,6 +13,10 @@ class TestSim:
     CMD_PING = 0
     CMD_NEIGHBOR_DUMP = 1
     CMD_ROUTE_DUMP=3
+    CMD_TEST_CLIENT = 4
+    CMD_TEST_SERVER = 5
+    CMD_WRITE = 7
+    CMD_CLIENT_CLOSE = 8
 
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL="command";

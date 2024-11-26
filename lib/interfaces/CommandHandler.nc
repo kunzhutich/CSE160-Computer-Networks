@@ -7,6 +7,8 @@ interface CommandHandler{
     event void printDistanceVector();
     event void setTestServer();
     event void setTestClient();
+    event void clientWrite(uint16_t dest, uint8_t *payload);
+    event void clientClose(uint16_t dest);
     event void setAppServer();
     event void setAppClient();
 }

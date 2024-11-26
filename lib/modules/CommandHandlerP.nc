@@ -78,6 +78,17 @@ implementation{
                 signal CommandHandler.setTestServer();
                 break;
 
+            case CMD_WRITE:
+                dbg(COMMAND_CHANNEL, "Command Type: Write\n");
+                signal CommandHandler.clientWrite(buff[0], &buff[1]);
+                break;
+
+            case CMD_CLIENT_CLOSE:
+                dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
+                signal CommandHandler.clientClose(buff[0]);
+                break;
+
+
             default:
                 dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
                 break;
