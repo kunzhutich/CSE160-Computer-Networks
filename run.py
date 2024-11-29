@@ -2,7 +2,7 @@ from TestSim import TestSim
 
 def cmdTestServer(sim, address, port):
     """Initiates the server at a given node and port."""
-    print("Debug({}): Setting up server on Node {}, Port {}".format(address, address, port))
+    print "Debug({}): Setting up server on Node {}, Port {}".format(address, address, port)
 
     # Allocate a socket and bind it to the port
     socket_address = chr(address) + chr(port)  # Pack node ID and port
@@ -11,12 +11,12 @@ def cmdTestServer(sim, address, port):
 
     # Simulate connection attempts with events
     sim.runTime(10)  # Step the simulation for connection attempts
-    print("Debug({}): Server setup complete.".format(address))
+    print "Debug({}): Server setup complete.".format(address)
 
 
 def cmdTestClient(sim, dest, src_port, dest_port, transfer):
     """Initiates a client, connects to the server, and transfers data."""
-    print("Debug({}): Client attempting connection to Node {}, Port {}".format(dest, dest, dest_port))
+    print "Debug({}): Client attempting connection to Node {}, Port {}".format(dest, dest, dest_port)
 
     # Bind client socket to source port
     src_address = chr(dest) + chr(src_port)
@@ -26,7 +26,7 @@ def cmdTestClient(sim, dest, src_port, dest_port, transfer):
     sim.sendCMD(sim.CMD_CONNECT, dest, dest_address)  # Attempt connection
     sim.runTime(10)  # Step the simulation for connection setup
 
-    print("Debug({}): Connection established. Starting data transfer...".format(dest))
+    print "Debug({}): Connection established. Starting data transfer...".format(dest)
 
     # Transfer data in chunks of up to 16 bytes
     data = [i for i in range(transfer)]
@@ -39,7 +39,7 @@ def cmdTestClient(sim, dest, src_port, dest_port, transfer):
 
 def cmdClientClose(sim, client_address, dest, src_port, dest_port):
     """Closes the client connection."""
-    print("Debug({}): Closing connection to Node {}, Port {}".format(client_address, dest, dest_port))
+    print "Debug({}): Closing connection to Node {}, Port {}".format(client_address, dest, dest_port)
 
     # Create source and destination addresses
     src_address = chr(client_address) + chr(src_port)
@@ -73,5 +73,5 @@ def main():
     sim.runTime(20)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

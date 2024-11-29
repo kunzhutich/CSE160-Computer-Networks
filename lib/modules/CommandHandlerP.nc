@@ -11,11 +11,12 @@
 #include "../../includes/channels.h"
 
 module CommandHandlerP{
-   provides interface CommandHandler;
-   uses interface Receive;
-   uses interface Pool<message_t>;
-   uses interface Queue<message_t*>;
-   uses interface Packet;
+    provides interface CommandHandler;
+    uses interface Receive;
+    uses interface Pool<message_t>;
+    uses interface Queue<message_t*>;
+    uses interface Packet;
+    uses interface Transport;
 }
 
 implementation{
@@ -26,6 +27,7 @@ implementation{
             uint8_t* buff;
             message_t *raw_msg;
             void *payload;
+            uint8_t src = msg->dest; // Or buff[0]
 
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
@@ -46,52 +48,66 @@ implementation{
 
             //Find out which command was called and call related command
             switch(commandID){
-            // A ping will have the destination of the packet as the first
-            // value and the string in the remainder of the payload
-            case CMD_PING:
-                dbg(COMMAND_CHANNEL, "Command Type: Ping\n");
-                signal CommandHandler.ping(buff[0], &buff[1]);
-                break;
+                // A ping will have the destination of the packet as the first
+                // value and the string in the remainder of the payload
+                case CMD_PING:
+                    dbg(COMMAND_CHANNEL, "Command Type: Ping\n");
+                    signal CommandHandler.ping(buff[0], &buff[1]);
+                    break;
 
-            case CMD_NEIGHBOR_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
-                signal CommandHandler.printNeighbors();
-                break;
+                case CMD_NEIGHBOR_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
+                    signal CommandHandler.printNeighbors();
+                    break;
 
-            case CMD_LINKSTATE_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Link State Dump\n");
-                signal CommandHandler.printLinkState();
-                break;
+                case CMD_LINKSTATE_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Link State Dump\n");
+                    signal CommandHandler.printLinkState();
+                    break;
 
-            case CMD_ROUTETABLE_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Route Table Dump\n");
-                signal CommandHandler.printRouteTable();
-                break;
+                case CMD_ROUTETABLE_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Route Table Dump\n");
+                    signal CommandHandler.printRouteTable();
+                    break;
 
-            case CMD_TEST_CLIENT:
-                dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                signal CommandHandler.setTestClient();
-                break;
+                case CMD_TEST_CLIENT:
+                    dbg(COMMAND_CHANNEL, "Command Type: Client\n");
+                    signal CommandHandler.setTestClient();
+                    break;
 
-            case CMD_TEST_SERVER:
-                dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                signal CommandHandler.setTestServer();
-                break;
+                case CMD_TEST_SERVER:
+                    dbg(COMMAND_CHANNEL, "Command Type: Client\n");
+                    signal CommandHandler.setTestServer();
+                    break;
 
-            case CMD_WRITE:
-                dbg(COMMAND_CHANNEL, "Command Type: Write\n");
-                signal CommandHandler.clientWrite(buff[0], &buff[1]);
-                break;
+                case CMD_WRITE:
+                    dbg(COMMAND_CHANNEL, "Command Type: Write\n");
+                    signal CommandHandler.clientWrite(buff[0], &buff[1]);
+                    break;
 
-            case CMD_CLIENT_CLOSE:
-                dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
-                signal CommandHandler.clientClose(buff[0]);
-                break;
+                case CMD_CLIENT_CLOSE:
+                    dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
+                    signal CommandHandler.clientClose(buff[0]);
+                    break;
 
+                case CMD_CONNECT:
+                    dbg(COMMAND_CHANNEL, "Command Type: Connect\n");
+                    call Transport.connect(src, (socket_addr_t *) buff);
+                    break;
 
-            default:
-                dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
-                break;
+                case CMD_LISTEN:
+                    dbg(COMMAND_CHANNEL, "Command Type: Listen\n");
+                    call Transport.listen(src);
+                    break;
+
+                case CMD_CLOSE:
+                    dbg(COMMAND_CHANNEL, "Command Type: Close\n");
+                    call Transport.close(src);
+                    break;
+
+                default:
+                    dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
+                    break;
             }
             call Pool.put(raw_msg);
         }
@@ -100,6 +116,7 @@ implementation{
             post processCommand();
         }
     }
+
     event message_t* Receive.receive(message_t* raw_msg, void* payload, uint8_t len){
         if (! call Pool.empty()){
             call Queue.enqueue(raw_msg);

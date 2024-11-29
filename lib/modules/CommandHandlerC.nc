@@ -29,4 +29,7 @@ implementation{
 
     components ActiveMessageC;
     CommandHandlerP.Packet -> ActiveMessageC;
+
+    components TransportC;
+    CommandHandlerP.Transport -> TransportC;
 }

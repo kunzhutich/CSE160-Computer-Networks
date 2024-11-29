@@ -1,6 +1,7 @@
 #include "../../includes/socket.h"
 #include "../../includes/channels.h"
 #include "../../includes/packet.h"
+#include "../../includes/utils.h"
 
 module TransportP {
     provides interface Transport;
@@ -108,45 +109,101 @@ implementation {
         return SUCCESS;
     }
 
+    // command socket_t Transport.socket() {
+    //     uint8_t i;
+    //     for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+    //         if (sockets[i].flag == CLOSED) {
+    //             sockets[i].flag = i + 1; // Assign a unique socket ID.
+    //             sockets[i].state = CLOSED; // Initialize socket state.
+    //             sockets[i].src = 0; // Clear source port.
+    //             sockets[i].dest.addr = 0; // Clear destination address.
+    //             sockets[i].dest.port = 0; // Clear destination port.
+    //             return i + 1;
+    //         }
+    //     }
+    //     dbg(TRANSPORT_CHANNEL, "No available sockets\n");
+    //     return 0; // No available sockets.
+    // }
+
     command socket_t Transport.socket() {
         uint8_t i;
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
-            if (sockets[i].flag == CLOSED) {
-                sockets[i].flag = i + 1; // Assign a unique socket ID.
-                sockets[i].state = CLOSED; // Initialize socket state.
-                sockets[i].src = 0; // Clear source port.
-                sockets[i].dest.addr = 0; // Clear destination address.
-                sockets[i].dest.port = 0; // Clear destination port.
-                return i + 1;
+            if (sockets[i].state == CLOSED) {
+                sockets[i].state = BOUND; // Change the initial state to BOUND
+                return i; // Return the index as the socket descriptor
             }
         }
-        dbg(TRANSPORT_CHANNEL, "No available sockets\n");
-        return 0; // No available sockets.
+        return -1; // Return error if no sockets are available
     }
+
+
+    // command error_t Transport.bind(socket_t fd, socket_addr_t *addr) {
+    //     uint8_t socketIndex = findSocket(fd);
+    //     if (socketIndex == MAX_NUM_OF_SOCKETS) return FAIL;
+
+    //     sockets[socketIndex].state = LISTEN;
+    //     sockets[socketIndex].src = addr->port;
+    //     sockets[socketIndex].dest.addr = ROOT_SOCKET_ADDR; // Default to broadcast.
+    //     sockets[socketIndex].dest.port = addr->port;
+    //     dbg(TRANSPORT_CHANNEL, "Socket %d bound to port %d\n", fd, addr->port);
+    //     return SUCCESS;
+    // }
 
     command error_t Transport.bind(socket_t fd, socket_addr_t *addr) {
         uint8_t socketIndex = findSocket(fd);
-        if (socketIndex == MAX_NUM_OF_SOCKETS) return FAIL;
+        if (socketIndex == MAX_NUM_OF_SOCKETS) {
+            dbg(TRANSPORT_CHANNEL, "Socket %d not found for binding\n", fd);
+            return FAIL;
+        }
 
-        sockets[socketIndex].state = LISTEN;
+        // Transition socket state to BOUND
+        sockets[socketIndex].state = BOUND;
+
+        dbg(TRANSPORT_CHANNEL, "Binding socket %d to port %d\n", fd, addr->port);
+
         sockets[socketIndex].src = addr->port;
-        sockets[socketIndex].dest.addr = ROOT_SOCKET_ADDR; // Default to broadcast.
-        sockets[socketIndex].dest.port = addr->port;
-        dbg(TRANSPORT_CHANNEL, "Socket %d bound to port %d\n", fd, addr->port);
+        // sockets[socketIndex].dest.addr = 0;  // Clear destination for now
+        // sockets[socketIndex].dest.port = 0;  // Clear destination port
+        dbg(TRANSPORT_CHANNEL, "Socket %d bound to port %d, state set to BOUND\n", fd, addr->port);
         return SUCCESS;
     }
 
+    // command error_t Transport.listen(socket_t fd) {
+    //     uint8_t socketIndex = findSocket(fd);
+    //     if (socketIndex == MAX_NUM_OF_SOCKETS) return FAIL;
+
+    //     if (sockets[socketIndex].state != LISTEN) {
+    //         dbg(TRANSPORT_CHANNEL, "Socket %d not in LISTEN state\n", fd);
+    //         return FAIL;
+    //     }
+    //     sockets[socketIndex].state = SYN_RCVD;
+    //     dbg(TRANSPORT_CHANNEL, "Socket %d is now listening\n", fd);
+    //     return SUCCESS;
+    // }
+
     command error_t Transport.listen(socket_t fd) {
         uint8_t socketIndex = findSocket(fd);
-        if (socketIndex == MAX_NUM_OF_SOCKETS) return FAIL;
-
-        if (sockets[socketIndex].state != LISTEN) {
-            dbg(TRANSPORT_CHANNEL, "Socket %d not in LISTEN state\n", fd);
+        if (socketIndex == MAX_NUM_OF_SOCKETS) {
+            dbg(TRANSPORT_CHANNEL, "Socket %d not found for listening\n", fd);
             return FAIL;
         }
-        sockets[socketIndex].state = SYN_RCVD;
-        dbg(TRANSPORT_CHANNEL, "Socket %d is now listening\n", fd);
-        return SUCCESS;
+
+        // if (sockets[socketIndex].state != BOUND) {
+        //     dbg(TRANSPORT_CHANNEL, "Socket %d is not in BOUND state, cannot listen\n", fd);
+        //     return FAIL;
+        // }
+
+        // // Transition to LISTEN state
+        // sockets[socketIndex].state = LISTEN;
+        // dbg(TRANSPORT_CHANNEL, "Socket %d is now in LISTEN state\n", fd);
+        // return SUCCESS;
+
+        if (sockets[socketIndex].state == BOUND) {
+            sockets[socketIndex].state = LISTEN;
+            return SUCCESS;
+        }
+
+        return FAIL; // Only sockets in BOUND state can listen
     }
 
     command socket_t Transport.accept(socket_t fd) {
