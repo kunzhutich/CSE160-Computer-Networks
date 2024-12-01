@@ -12,6 +12,7 @@
 #include "includes/CommandMsg.h"
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
+#include "includes/socket.h"
 
 module Node{
     uses interface Boot;
@@ -53,19 +54,6 @@ implementation{
     }
 
     event void AMControl.stopDone(error_t err){}
-
-
-    // from SKELETON CODE:
-    // event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
-    //     dbg(GENERAL_CHANNEL, "Packet Received\n");
-    //     if(len==sizeof(pack)){
-    //         pack* myMsg=(pack*) payload;
-    //         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
-    //         return msg;
-    //     }
-    //     dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
-    //     return msg;
-    // }
 
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
         pack* myMsg = (pack*) payload;
@@ -111,17 +99,107 @@ implementation{
 
     event void CommandHandler.printDistanceVector(){}
 
-    event void CommandHandler.setTestServer(){}
 
-    event void CommandHandler.setTestClient(){}
 
-    event void CommandHandler.clientWrite(uint16_t dest, uint8_t *payload) {
-        call Transport.write(dest, payload, strlen(payload));
+    event void CommandHandler.setTestServer(uint8_t port) {
+        socket_t serverSocket = call Transport.socket();        // Allocate a socket
+        socket_addr_t serverAddr;       // Bind the socket to the port
+
+        dbg(TRANSPORT_CHANNEL, "Setting up a test server on port %d\n", port);
+        
+        if (serverSocket == NULL_SOCKET) {
+            dbg(TRANSPORT_CHANNEL, "Failed to allocate a socket for the server\n");
+            return;
+        }
+
+        serverAddr.addr = TOS_NODE_ID; // The server's node ID
+        serverAddr.port = port;
+        if (call Transport.bind(serverSocket, &serverAddr) != SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Failed to bind socket to port %d\n", port);
+            return;
+        }
+
+        // Start listening on the socket
+        if (call Transport.listen(serverSocket) != SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Failed to set the server socket to listen\n");
+            return;
+        }
+
+        dbg(TRANSPORT_CHANNEL, "Server setup complete on port %d\n", port);
     }
 
-    event void CommandHandler.clientClose(uint16_t dest) {
+
+
+    event void CommandHandler.setTestClient(uint8_t dest, uint8_t srcPort, uint8_t destPort, uint16_t transfer) {
+        socket_t clientSocket = call Transport.socket();
+        socket_addr_t clientAddr;
+        socket_addr_t serverAddr;        // Connect to the destination
+
+        uint8_t payload[16];
+        uint16_t i;
+        uint16_t len;
+        uint8_t j;
+
+        dbg(TRANSPORT_CHANNEL, "Setting up a test client to Node %d, Port %d (from Port %d), transferring %d bytes\n",
+            dest, destPort, srcPort, transfer);
+
+        if (clientSocket == NULL_SOCKET) {
+            dbg(TRANSPORT_CHANNEL, "Failed to allocate a socket for the client\n");
+            return;
+        }
+   
+
+        clientAddr.addr = TOS_NODE_ID; // The client's node ID
+        clientAddr.port = srcPort;
+        if (call Transport.bind(clientSocket, &clientAddr) != SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Failed to bind socket to port %d\n", srcPort);
+            return;
+        }
+
+
+        serverAddr.addr = dest;      // The server's node ID
+        serverAddr.port = destPort;  // The server's port
+        if (call Transport.connect(clientSocket, &serverAddr) != SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Failed to connect to Node %d, Port %d\n", dest, destPort);
+            return;
+        }
+
+        // Simulate data transfer
+        dbg(TRANSPORT_CHANNEL, "Client connection established, starting data transfer\n");
+       
+        for (i = 0; i < transfer; i += sizeof(payload)) {
+            len = (transfer - i > sizeof(payload)) ? sizeof(payload) : (transfer - i);
+            for (j = 0; j < len; j++) {
+                payload[j] = (i + j) & 0xFF; // Fill payload with data
+            }
+            call Transport.write(clientSocket, payload, len);
+        }
+        dbg(TRANSPORT_CHANNEL, "Data transfer complete\n");
+    }
+
+
+
+    event void CommandHandler.clientClose(uint16_t dest, uint8_t srcPort, uint8_t destPort) {
+        dbg(TRANSPORT_CHANNEL, "Closing client connection to destination %d\n", dest);
+
+        // Close the socket (logic may vary based on your implementation)
         call Transport.close(dest);
     }
+
+
+    event void CommandHandler.clientWrite(uint16_t dest, uint8_t *payload) {
+        socket_t clientSocket = dest; // Use dest as the socket descriptor (or modify based on your logic)
+        uint16_t payloadLength = strlen((char*)payload);
+
+        dbg(TRANSPORT_CHANNEL, "Client writing to destination %d\n", dest);
+
+        if (call Transport.write(clientSocket, payload, payloadLength) == SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Client write successful\n");
+        } else {
+            dbg(TRANSPORT_CHANNEL, "Client write failed\n");
+        }
+    }
+
 
     event void CommandHandler.setAppServer(){}
 

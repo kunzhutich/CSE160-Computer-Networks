@@ -60,14 +60,19 @@ def main():
     sim.addChannel(sim.GENERAL_CHANNEL)
     sim.addChannel(sim.TRANSPORT_CHANNEL)
 
+    sim.runTime(5)
+
     # Test server setup
     cmdTestServer(sim, address=1, port=80)
+    sim.runTime(5)
 
     # Test client setup and data transfer
     cmdTestClient(sim, dest=1, src_port=20, dest_port=80, transfer=128)
+    sim.runTime(5)
 
     # Test connection teardown
     cmdClientClose(sim, client_address=2, dest=1, src_port=20, dest_port=80)
+    sim.runTime(5)
 
     # Run for additional time to observe final outputs
     sim.runTime(20)

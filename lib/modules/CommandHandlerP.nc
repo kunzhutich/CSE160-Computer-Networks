@@ -27,7 +27,7 @@ implementation{
             uint8_t* buff;
             message_t *raw_msg;
             void *payload;
-            uint8_t src = msg->dest; // Or buff[0]
+            uint8_t src; // Or buff[0]
 
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
@@ -45,6 +45,7 @@ implementation{
             dbg(COMMAND_CHANNEL, "A Command has been Issued.\n");
             buff = (uint8_t*) msg->payload;
             commandID = msg->id;
+            src = msg->dest;
 
             //Find out which command was called and call related command
             switch(commandID){
@@ -70,40 +71,55 @@ implementation{
                     signal CommandHandler.printRouteTable();
                     break;
 
-                case CMD_TEST_CLIENT:
-                    dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                    signal CommandHandler.setTestClient();
-                    break;
-
                 case CMD_TEST_SERVER:
-                    dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                    signal CommandHandler.setTestServer();
+                    dbg(COMMAND_CHANNEL, "Command Type: Testing Server\n");
+                    signal CommandHandler.setTestServer(buff[0]);
                     break;
 
-                case CMD_WRITE:
-                    dbg(COMMAND_CHANNEL, "Command Type: Write\n");
-                    signal CommandHandler.clientWrite(buff[0], &buff[1]);
+                case CMD_TEST_CLIENT:
+                    dbg(COMMAND_CHANNEL, "Command Type: Testing Client\n");
+                    signal CommandHandler.setTestClient(buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
                     break;
 
                 case CMD_CLIENT_CLOSE:
-                    dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
-                    signal CommandHandler.clientClose(buff[0]);
+                    dbg(COMMAND_CHANNEL, "Command Type: Closing Client\n");
+                    signal CommandHandler.clientClose(buff[0], buff[1], buff[2]);
                     break;
 
-                case CMD_CONNECT:
-                    dbg(COMMAND_CHANNEL, "Command Type: Connect\n");
-                    call Transport.connect(src, (socket_addr_t *) buff);
-                    break;
+                // case CMD_TEST_SERVER:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Client\n");
+                //     signal CommandHandler.setTestServer(buff[0]);
+                //     break;
 
-                case CMD_LISTEN:
-                    dbg(COMMAND_CHANNEL, "Command Type: Listen\n");
-                    call Transport.listen(src);
-                    break;
+                // case CMD_TEST_CLIENT:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Client\n");
+                //     signal CommandHandler.setTestClient(buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
+                //     break;
 
-                case CMD_CLOSE:
-                    dbg(COMMAND_CHANNEL, "Command Type: Close\n");
-                    call Transport.close(src);
-                    break;
+                // case CMD_WRITE:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Write\n");
+                //     signal CommandHandler.clientWrite(buff[0], &buff[1]);
+                //     break;
+
+                // case CMD_CLIENT_CLOSE:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
+                //     signal CommandHandler.clientClose(buff[0]);
+                //     break;
+
+                // case CMD_CONNECT:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Connect\n");
+                //     call Transport.connect(src, (socket_addr_t *) buff);
+                //     break;
+
+                // case CMD_LISTEN:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Listen\n");
+                //     call Transport.listen(src);
+                //     break;
+
+                // case CMD_CLOSE:
+                //     dbg(COMMAND_CHANNEL, "Command Type: Close\n");
+                //     call Transport.close(src);
+                //     break;
 
                 default:
                     dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);

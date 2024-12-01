@@ -10,16 +10,19 @@ enum{
 
 enum socket_state{
     CLOSED,
+    ALLOCATED,
+    BOUND,
     LISTEN,
     ESTABLISHED,
     SYN_SENT,
-    SYN_RCVD,
-    BOUND
+    SYN_RCVD
 };
 
 
 typedef nx_uint8_t nx_socket_port_t;
 typedef uint8_t socket_port_t;
+
+#define NULL_SOCKET 0   
 
 // socket_addr_t is a simplified version of an IP connection.
 typedef nx_struct socket_addr_t{
