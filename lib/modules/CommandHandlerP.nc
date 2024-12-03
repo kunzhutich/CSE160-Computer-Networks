@@ -86,41 +86,6 @@ implementation{
                     signal CommandHandler.clientClose(buff[0], buff[1], buff[2]);
                     break;
 
-                // case CMD_TEST_SERVER:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                //     signal CommandHandler.setTestServer(buff[0]);
-                //     break;
-
-                // case CMD_TEST_CLIENT:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                //     signal CommandHandler.setTestClient(buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
-                //     break;
-
-                // case CMD_WRITE:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Write\n");
-                //     signal CommandHandler.clientWrite(buff[0], &buff[1]);
-                //     break;
-
-                // case CMD_CLIENT_CLOSE:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Client Kill\n");
-                //     signal CommandHandler.clientClose(buff[0]);
-                //     break;
-
-                // case CMD_CONNECT:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Connect\n");
-                //     call Transport.connect(src, (socket_addr_t *) buff);
-                //     break;
-
-                // case CMD_LISTEN:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Listen\n");
-                //     call Transport.listen(src);
-                //     break;
-
-                // case CMD_CLOSE:
-                //     dbg(COMMAND_CHANNEL, "Command Type: Close\n");
-                //     call Transport.close(src);
-                //     break;
-
                 default:
                     dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
                     break;

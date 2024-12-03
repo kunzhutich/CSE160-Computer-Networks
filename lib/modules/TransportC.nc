@@ -1,3 +1,5 @@
+#include <AM.h>
+
 configuration TransportC {
     provides interface Transport;
 }
@@ -12,6 +14,6 @@ implementation {
     components new SimpleSendC(AM_PACK);
     TransportP.Sender -> SimpleSendC;
 
-    // components CommandHandlerC;
-    // TransportP.CommandHandler -> CommandHandlerC;
+    components ActiveMessageC;
+    TransportP.Receive -> ActiveMessageC.Receive[6];
 }
