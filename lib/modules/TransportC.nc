@@ -2,6 +2,7 @@
 
 configuration TransportC {
     provides interface Transport;
+    // uses interface Boot;
 }
 
 implementation {
@@ -15,5 +16,8 @@ implementation {
     TransportP.Sender -> SimpleSendC;
 
     components ActiveMessageC;
-    TransportP.Receive -> ActiveMessageC.Receive[6];
+    TransportP.Receive -> ActiveMessageC.Receive[AM_PACK];
+
+    components MainC;
+    TransportP.Boot -> MainC.Boot;
 }

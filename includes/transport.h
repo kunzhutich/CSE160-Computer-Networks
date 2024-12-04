@@ -3,6 +3,8 @@
 
 #include "packet.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define FLAG_SYN 0x01
 #define FLAG_ACK 0x02
 #define FLAG_FIN 0x04
