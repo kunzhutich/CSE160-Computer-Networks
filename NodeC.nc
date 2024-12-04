@@ -40,4 +40,16 @@ implementation {
 
     components RoutingC;
     Node.Routing -> RoutingC;
+
+    components TransportC;
+    Node.Transport -> TransportC;
+
+    components new TimerMilliC() as ServerTimer;
+    Node.ServerTimer -> ServerTimer;
+
+    components new TimerMilliC() as ClientTimer;
+    Node.ClientTimer -> ClientTimer;
+
+    components IPC;
+    Node.IP -> IPC;
 }

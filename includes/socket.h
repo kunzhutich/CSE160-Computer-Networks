@@ -11,9 +11,13 @@ enum{
 enum socket_state{
     CLOSED,
     LISTEN,
-    ESTABLISHED,
     SYN_SENT,
     SYN_RCVD,
+    ESTABLISHED,
+    FIN_WAIT_1,
+    FIN_WAIT_2,
+    CLOSE_WAIT,
+    LAST_ACK,
 };
 
 
@@ -51,6 +55,43 @@ typedef struct socket_store_t{
 
     uint16_t RTT;
     uint8_t effectiveWindow;
+
+    socket_t parentFd;  // For accept()
+
+
+    // Sender sliding window
+    uint16_t sendWindowBase;    // First sequence number in window
+    uint16_t sendWindowSize;    // Current window size
+    uint8_t* unAckedData[SOCKET_BUFFER_SIZE];  // Buffer for unacknowledged data
+    uint16_t unAckedSeqNums[SOCKET_BUFFER_SIZE]; // Sequence numbers of unacked data
+    uint16_t numUnAcked;       // Number of unacknowledged packets
+    
+    // Receiver sliding window
+    uint16_t rcvWindowBase;    // Expected next sequence number
+    uint16_t rcvWindowSize;    // Remaining buffer space
+    uint8_t* outOfOrderData[SOCKET_BUFFER_SIZE];  // Buffer for out-of-order segments
+    uint16_t outOfOrderSeqNums[SOCKET_BUFFER_SIZE]; // Sequence numbers of out-of-order segments
+    uint16_t numOutOfOrder;    // Number of out-of-order segments
 }socket_store_t;
+
+// typedef struct socket_store_t{
+//     uint8_t flag;
+//     enum socket_state state;
+//     socket_port_t src;
+//     socket_addr_t dest;
+
+//     uint16_t seqNum;
+//     uint16_t ackNum;
+
+//     uint8_t sendBuff[SOCKET_BUFFER_SIZE];
+//     uint16_t sendBuffLen;
+//     uint16_t lastAck;
+
+//     uint8_t rcvdBuff[SOCKET_BUFFER_SIZE];
+//     uint16_t rcvdBuffLen;
+//     uint16_t nextExpectedSeq;
+
+//     socket_t parentFd;  // For accept()
+// } socket_store_t;
 
 #endif
