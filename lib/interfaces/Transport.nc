@@ -144,4 +144,6 @@ interface Transport{
     *   to listen else FAIL.
     */
     command error_t listen(socket_t fd);
+
+    command bool getSocketData(uint8_t socketIndex, socket_store_t *socketData);
 }

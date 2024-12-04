@@ -28,9 +28,17 @@ implementation {
     socket_metadata_t socketMetadata[MAX_NUM_OF_SOCKETS]; // Transport-specific metadata
     uint8_t numSockets = 0;
 
+    static bool initialized = FALSE;
 
     event void Boot.booted() {
         uint8_t i;
+
+        if (!initialized) {
+            dbg(TRANSPORT_CHANNEL, "TransportP initializing sockets for the first time.\n");
+            initialized = TRUE;
+        } else {
+            dbg(TRANSPORT_CHANNEL, "TransportP already initialized. Skipping re-initialization.\n");
+        }
 
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
             sockets[i].state = CLOSED;         // Initialize state to CLOSED
@@ -41,6 +49,7 @@ implementation {
             memset(&socketMetadata[i], 0, sizeof(socket_metadata_t)); // Clear metadata
         }
         dbg(TRANSPORT_CHANNEL, "TransportP initialized with %d sockets.\n", MAX_NUM_OF_SOCKETS);
+        dbg(TRANSPORT_CHANNEL, "Address of sockets array: %p\n", &sockets);
     }
 
     // Helper function to find a socket by its descriptor
@@ -84,12 +93,19 @@ implementation {
 
     // Allocate a new socket
     command socket_t Transport.socket() {
-        uint8_t i;
+        uint8_t i, j;
+
+        dbg(TRANSPORT_CHANNEL, "Address of sockets array in Transport.socket: %p\n", &sockets); // Add this line
+        dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
+        for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+            dbg(TRANSPORT_CHANNEL, "        Socket %d's state is %d\n", j, sockets[j].state);
+        }
+
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
             if (sockets[i].state == CLOSED) {
-                dbg(TRANSPORT_CHANNEL, "Before SOCKET FUNCTION: socket state is ------ %d\n", sockets[i].state);
+                dbg(TRANSPORT_CHANNEL, "Before SOCKET FUNCTION: socket %d's state is ------ %d\n", i, sockets[i].state);
                 sockets[i].state = ALLOCATED;       // Set to ALLOCATED state
-                dbg(TRANSPORT_CHANNEL, "After SOCKET FUNCTION: socket state is ------ %d\n", sockets[i].state);
+                dbg(TRANSPORT_CHANNEL, "After SOCKET FUNCTION: socket %d's state is ------ %d\n", i, sockets[i].state);
 
 
                 sockets[i].flag = i + 1;           // Assign a unique socket ID
@@ -101,6 +117,12 @@ implementation {
                 socketMetadata[i].socketId = i + 1;
 
                 dbg(TRANSPORT_CHANNEL, "Socket %d allocated\n", i + 1);
+
+                dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
+                for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+                    dbg(TRANSPORT_CHANNEL, "        Socket %d's state is %d\n", j, sockets[j].state);
+                }
+
                 return i + 1;                      // Return socket ID
             }
         }
@@ -132,11 +154,13 @@ implementation {
             }
         }
 
+        dbg(TRANSPORT_CHANNEL, "Before BIND FUNCTION: socket %d's SRC is ------ %d\n", fd, sockets[socketIndex].src);
         sockets[socketIndex].src = addr->port; // Assign the source port
+        dbg(TRANSPORT_CHANNEL, "After BIND FUNCTION: socket %d's SRC is ------ %d\n", fd, sockets[socketIndex].src);
 
-        dbg(TRANSPORT_CHANNEL, "Before BIND FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "Before BIND FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
         sockets[socketIndex].state = BOUND;   // Transition to BOUND state
-        dbg(TRANSPORT_CHANNEL, "After BIND FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "After BIND FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
 
         dbg(TRANSPORT_CHANNEL, "Socket %d bound to port %d\n", fd, addr->port);
         return SUCCESS;
@@ -149,9 +173,9 @@ implementation {
 
         if (sockets[socketIndex].state != BOUND) return FAIL;
 
-        dbg(TRANSPORT_CHANNEL, "Before LISTEN FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "Before LISTEN FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
         sockets[socketIndex].state = LISTEN; // Transition to LISTEN state
-        dbg(TRANSPORT_CHANNEL, "After LISTEN FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "After LISTEN FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
 
         dbg(TRANSPORT_CHANNEL, "Socket %d is now in LISTEN state\n", fd);
         return SUCCESS;
@@ -178,9 +202,9 @@ implementation {
             return FAIL;
         }
 
-        dbg(TRANSPORT_CHANNEL, "Before CONNECT FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "Before CONNECT FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
         sockets[socketIndex].state = SYN_SENT;
-        dbg(TRANSPORT_CHANNEL, "After CONNECT FUNCTION: socket state is ------ %d\n", sockets[socketIndex].state);
+        dbg(TRANSPORT_CHANNEL, "After CONNECT FUNCTION: socket %d's state is ------ %d\n", fd, sockets[socketIndex].state);
 
         sockets[socketIndex].dest = *addr;
 
@@ -833,4 +857,20 @@ implementation {
         return bytesToRead;
     }
 
+    // command bool Transport.getSocketData(uint8_t socketIndex, socket_t *socketData) {
+    //     if (socketIndex >= MAX_NUM_OF_SOCKETS) {
+    //         return FALSE; // Invalid socketIndex
+    //     }
+
+    //     *socketData = sockets[socketIndex]; // Copy socketData data
+    //     return TRUE;
+    // }
+
+    command bool Transport.getSocketData(uint8_t sockIndex, socket_store_t *sockData) {
+        if (sockIndex >= MAX_NUM_OF_SOCKETS) {
+            return FALSE; // Invalid index
+        }
+        *sockData = sockets[sockIndex]; // Copy socket data
+        return TRUE;
+    }
 }
