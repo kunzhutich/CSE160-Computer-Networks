@@ -16,7 +16,7 @@ typedef nx_struct transport {
     nx_uint16_t seq;
     nx_uint16_t ack;
     nx_uint8_t flags;
-    nx_uint8_t window;
+    nx_uint16_t window;
     nx_uint8_t length; // Length of payload data
     nx_uint8_t payload[TRANSPORT_MAX_PAYLOAD_SIZE];
 } transport;

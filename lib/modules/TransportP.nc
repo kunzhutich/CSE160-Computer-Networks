@@ -151,34 +151,6 @@ implementation {
         return SUCCESS;
     }
 
-    // command error_t Transport.close(socket_t fd) {
-    //     transport tHeader;
-    //     pack pck;
-
-    //     socket_store_t* sock = getSocket(fd);
-    //     if (sock == NULL) return FAIL;
-
-    //     if (sock->state == ESTABLISHED) {
-    //         // Send FIN packet
-    //         tHeader.srcPort = sock->src;
-    //         tHeader.destPort = sock->dest.port;
-    //         tHeader.seq = sock->lastSent;
-    //         tHeader.ack = sock->lastAck;
-    //         tHeader.flags = FIN;
-    //         tHeader.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //         tHeader.length = 0;
-
-    //         // makePack(&pck, TOS_NODE_ID, sock->destAddr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tHeader, sizeof(transport));
-    //         makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tHeader, sizeof(transport));
-
-    //         call IP.send(&pck);
-
-    //         sock->state = FIN_WAIT_1;
-    //         return SUCCESS;
-    //     }
-    //     return FAIL;
-    // }
-
     command error_t Transport.close(socket_t fd) {
         transport tHeader;
         pack pck;
@@ -238,58 +210,57 @@ implementation {
             }
         }
 
-        if (sock == NULL) {
-            // Check for listening socket if this is a SYN
-            if (tHeader->flags & SYN) {
-                for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
-                    if (sockets[i].flag == 1 &&
-                        sockets[i].state == LISTEN &&
-                        sockets[i].src == tHeader->destPort) {
-                        dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
-                        for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
-                            dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
-                        }
-                        
-                        // Create new socket for connection
-                        new_fd = call Transport.socket();
-                        
-                        dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
-                        for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
-                            dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
-                        }
+        // If no socket found and this is a SYN packet, look for listening socket
+        if (sock == NULL && (tHeader->flags & SYN)) {
+            for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+                if (sockets[i].flag == 1 &&
+                    sockets[i].state == LISTEN &&
+                    sockets[i].src == tHeader->destPort) {
+                    
+                    dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
+                    for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+                        dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+                    }
+                    
+                    // Create new socket for connection
+                    new_fd = call Transport.socket();
+                    
+                    dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
+                    for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+                        dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+                    }
 
-                        if (new_fd != (socket_t)-1) {
-                            sockets[new_fd].src = sockets[i].src;
-                            sockets[new_fd].dest.addr = package->src;
-                            sockets[new_fd].dest.port = tHeader->srcPort;
-                            sockets[new_fd].parentFd = i;
-                            sock = &sockets[new_fd];
-                            fd = new_fd;
-                            dbg(TRANSPORT_CHANNEL, "Created new socket %d for incoming connection\n", new_fd);
+                    if (new_fd != (socket_t)-1) {
+                        sockets[new_fd].src = sockets[i].src;
+                        sockets[new_fd].dest.addr = package->src;
+                        sockets[new_fd].dest.port = tHeader->srcPort;
+                        sockets[new_fd].parentFd = i;
+                        sock = &sockets[new_fd];
+                        fd = new_fd;
+                        dbg(TRANSPORT_CHANNEL, "Created new socket %d for incoming connection\n", new_fd);
 
-                            dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
-                                fd, sock->state, sock->flag, sock->src);
-                            sock->state = SYN_RCVD;
-                            dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
-                                fd, sock->state, sock->flag, sock->src);
+                        dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+                            fd, sock->state, sock->flag, sock->src);
+                        sock->state = SYN_RCVD;
+                        dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+                            fd, sock->state, sock->flag, sock->src);
 
-                            // Send SYN-ACK
-                            tResponse.srcPort = sock->src;
-                            tResponse.destPort = sock->dest.port;
-                            tResponse.seq = sock->lastSent;
-                            tResponse.ack = tHeader->seq + 1;
-                            tResponse.flags = SYN | ACK;
-                            tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-                            tResponse.length = 0;
+                        // Send SYN-ACK
+                        tResponse.srcPort = sock->src;
+                        tResponse.destPort = sock->dest.port;
+                        tResponse.seq = sock->lastSent;
+                        tResponse.ack = tHeader->seq + 1;
+                        tResponse.flags = SYN | ACK;
+                        tResponse.window = SOCKET_BUFFER_SIZE;
+                        tResponse.length = 0;
 
-                            makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
-                                    (uint8_t*)&tResponse, sizeof(transport));
+                        makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
+                                (uint8_t*)&tResponse, sizeof(transport));
 
-                            call IP.send(&pck);
-                            dbg(TRANSPORT_CHANNEL, "Server sent SYN-ACK to %d:%d\n", 
-                                sock->dest.addr, sock->dest.port);
-                            break;
-                        }
+                        call IP.send(&pck);
+                        dbg(TRANSPORT_CHANNEL, "Server sent SYN-ACK to %d:%d\n", 
+                            sock->dest.addr, sock->dest.port);
+                        break;
                     }
                 }
             }
@@ -297,6 +268,7 @@ implementation {
 
         if (sock == NULL) return FAIL;
 
+        // Handle ACK packets
         if (tHeader->flags & ACK) {
             if (sock->state == SYN_SENT) {
                 dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", 
@@ -315,7 +287,7 @@ implementation {
                 sock->state = ESTABLISHED;
                 dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
                     fd, sock->state, sock->flag, sock->src);
-
+                
                 dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", 
                     sock->dest.addr, sock->dest.port);
             }
@@ -327,6 +299,7 @@ implementation {
                     fd, sock->state, sock->flag, sock->src);
             }
         }
+        // Handle FIN packets
         else if (tHeader->flags & FIN) {
             if (sock->state == ESTABLISHED) {
                 dbg(TRANSPORT_CHANNEL, "Before, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", 
@@ -341,7 +314,7 @@ implementation {
                 tResponse.seq = sock->lastSent;
                 tResponse.ack = tHeader->seq + 1;
                 tResponse.flags = ACK;
-                tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
+                tResponse.window = SOCKET_BUFFER_SIZE;
                 tResponse.length = 0;
 
                 makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
@@ -354,44 +327,12 @@ implementation {
                     fd, sock->state, sock->flag, sock->src);
             }
         }
-        // else if (sock->state == ESTABLISHED) {
-        //     // Handle data packet
-        //     uint16_t dataLen = tHeader->length;
-        //     uint8_t availableSpace;
-
-        //     if (dataLen > 0) {
-        //         dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", dataLen, TOS_NODE_ID);
-
-        //         availableSpace = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-        //         if (dataLen > availableSpace) {
-        //             dataLen = availableSpace;
-        //         }
-
-        //         memcpy(sock->rcvdBuff + sock->lastRcvd, tHeader->payload, dataLen);
-        //         sock->lastRcvd += dataLen;
-
-        //         // Send ACK
-        //         tResponse.srcPort = sock->src;
-        //         tResponse.destPort = sock->dest.port;
-        //         tResponse.seq = sock->lastSent;
-        //         tResponse.ack = tHeader->seq + dataLen;
-        //         tResponse.flags = ACK;
-        //         tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-        //         tResponse.length = 0;
-
-        //         makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
-        //                 (uint8_t*)&tResponse, sizeof(transport));
-
-        //         call IP.send(&pck);
-        //     }
-        // }
-        else if (sock->state == ESTABLISHED && !(tHeader->flags & (SYN|FIN))) {
-            pack responsePack;
+        // Handle data packets
+        else if (sock->state == ESTABLISHED) {
             uint16_t dataLen = tHeader->length;
             
             if (dataLen > 0) {
-                dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", 
-                    dataLen, fd);
+                dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", dataLen, fd);
                 
                 // Check if this is the next expected sequence number
                 if (tHeader->seq == sock->rcvWindowBase) {
@@ -402,20 +343,18 @@ implementation {
                     
                     // Process any buffered out-of-order segments that are now in order
                     while (sock->numOutOfOrder > 0) {
-                        // Check if first out-of-order segment is now in sequence
                         if (sock->outOfOrderSeqNums[0] == sock->rcvWindowBase) {
-                            // Copy data and update window
+                            uint16_t len = strlen((char*)&sock->outOfOrderData[0]);
                             memcpy(sock->rcvdBuff + sock->lastRcvd, 
-                                sock->outOfOrderData[0], 
-                                strlen((char*)sock->outOfOrderData[0]));
-                            sock->lastRcvd += strlen((char*)sock->outOfOrderData[0]);
-                            sock->rcvWindowBase += strlen((char*)sock->outOfOrderData[0]);
+                                &sock->outOfOrderData[0], len);
+                            sock->lastRcvd += len;
+                            sock->rcvWindowBase += len;
                             
-                            // Remove from out-of-order buffer
+                            // Shift remaining out-of-order segments
                             for (i = 0; i < sock->numOutOfOrder - 1; i++) {
-                                memcpy(sock->outOfOrderData[i], 
-                                    sock->outOfOrderData[i+1],
-                                    strlen((char*)sock->outOfOrderData[i+1]));
+                                memcpy(&sock->outOfOrderData[i], 
+                                    &sock->outOfOrderData[i+1],
+                                    SOCKET_BUFFER_SIZE);
                                 sock->outOfOrderSeqNums[i] = sock->outOfOrderSeqNums[i+1];
                             }
                             sock->numOutOfOrder--;
@@ -423,12 +362,15 @@ implementation {
                             break;
                         }
                     }
-                } else if (tHeader->seq > sock->rcvWindowBase) {
-                    // Out-of-order segment, store it
-                    memcpy(sock->outOfOrderData[sock->numOutOfOrder], 
-                        tHeader->payload, dataLen);
-                    sock->outOfOrderSeqNums[sock->numOutOfOrder] = tHeader->seq;
-                    sock->numOutOfOrder++;
+                } 
+                else if (tHeader->seq > sock->rcvWindowBase) {
+                    // Out-of-order segment, store it if we have space
+                    if (sock->numOutOfOrder < SOCKET_BUFFER_SIZE) {
+                        memcpy(&sock->outOfOrderData[sock->numOutOfOrder], 
+                            tHeader->payload, dataLen);
+                        sock->outOfOrderSeqNums[sock->numOutOfOrder] = tHeader->seq;
+                        sock->numOutOfOrder++;
+                    }
                 }
                 
                 // Send ACK
@@ -440,188 +382,137 @@ implementation {
                 tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;  // Advertise available buffer
                 tResponse.length = 0;
                 
-                makePack(&responsePack, TOS_NODE_ID, sock->dest.addr, MAX_TTL,
+                makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL,
                         PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
                 
-                call IP.send(&responsePack);
+                call IP.send(&pck);
             }
         }
 
         return SUCCESS;
     }
-
     // command error_t Transport.receive(pack* package) {
     //     transport tResponse;
     //     pack pck;
-
     //     transport* tHeader = (transport*) package->payload;
+    //     socket_t new_fd;
 
-    //     uint16_t dataLen;
-    //     uint8_t availableSpace;
-        
     //     // Find matching socket
     //     socket_store_t* sock = NULL;
-    //     // socket_t fd = -1;
-    //     uint8_t i;
+    //     socket_t fd = -1;
+    //     uint8_t i, j;
 
-    //     // for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
-    //     //     if (sockets[i].flag == 1 &&
-    //     //         sockets[i].src == tHeader->destPort &&
-    //     //         sockets[i].dest.port == tHeader->srcPort &&
-    //     //         sockets[i].dest.addr == package->src) {
-    //     //             sock = &sockets[i];
-    //     //             fd = i;
-    //     //             break;
-    //     //     }
-    //     // }
+    //     dbg(TRANSPORT_CHANNEL, "Transport: Received packet with flags %d from %d:%d to %d:%d\n", 
+    //         tHeader->flags, package->src, tHeader->srcPort, package->dest, tHeader->destPort);
 
-    //     socket_t fd;
-    //     for(fd = 0; fd < MAX_NUM_OF_SOCKETS; fd++) {
-    //         if(sockets[fd].flag == 1 && 
-    //         sockets[fd].src == tHeader->destPort &&
-    //         sockets[fd].dest.port == tHeader->srcPort &&
-    //         sockets[fd].dest.addr == package->src) {
-    //             sock = &sockets[fd];
-    //             break;
-    //         }
-    //     }
-
-    //     // if (sock == NULL) {
-    //     //     // Check for listening socket
-    //     //     for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
-    //     //         if (sockets[i].flag == 1 &&
-    //     //             sockets[i].state == LISTEN &&
-    //     //             sockets[i].src == tHeader->destPort) {
-    //     //             // Create new socket for connection
-    //     //             socket_t new_fd = call Transport.socket();
-    //     //             if (new_fd == (socket_t)-1) return FAIL;
-
-    //     //             sockets[new_fd].src = sockets[i].src;
-    //     //             sockets[new_fd].dest.addr = package->src;
-    //     //             sockets[new_fd].dest.port = tHeader->srcPort;
-    //     //             sockets[new_fd].parentFd = i;
-    //     //             sockets[new_fd].state = SYN_RCVD;
-
-    //     //             sock = &sockets[new_fd];
-    //     //             fd = new_fd;
-    //     //             break;
-    //     //         }
-    //     //     }
-    //     // }
-
-    //     // If no established socket found and this is a SYN, look for LISTEN socket
-    //     if(sock == NULL && (tHeader->flags & SYN)) {
-    //         for(fd = 0; fd < MAX_NUM_OF_SOCKETS; fd++) {
-    //             if(sockets[fd].flag == 1 && 
-    //             sockets[fd].state == LISTEN &&
-    //             sockets[fd].src == tHeader->destPort) {
-    //                 // Create new socket for connection
-    //                 socket_t new_fd = call Transport.socket();
-    //                 if(new_fd != (socket_t)-1) {
-    //                     sockets[new_fd].src = tHeader->destPort;
-    //                     sockets[new_fd].dest.addr = package->src;
-    //                     sockets[new_fd].dest.port = tHeader->srcPort;
-    //                     sockets[new_fd].state = SYN_RCVD;
-    //                     sockets[new_fd].parentFd = fd;
-    //                     sock = &sockets[new_fd];
-    //                     fd = new_fd;
-    //                     dbg(TRANSPORT_CHANNEL, "Created new socket %d for incoming connection\n", new_fd);
-    //                 }
+    //     // First try to find an established socket
+    //     for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+    //         if (sockets[i].flag == 1 &&
+    //             sockets[i].src == tHeader->destPort &&
+    //             sockets[i].dest.port == tHeader->srcPort &&
+    //             sockets[i].dest.addr == package->src) {
+    //                 sock = &sockets[i];
+    //                 fd = i;
     //                 break;
-    //             }
     //         }
     //     }
 
     //     if (sock == NULL) {
-    //         // No matching socket, drop packet
-    //         dbg(TRANSPORT_CHANNEL, "No matching socket found for packet\n");
-    //         return FAIL;
-    //     }
+    //         // Check for listening socket if this is a SYN
+    //         if (tHeader->flags & SYN) {
+    //             for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+    //                 if (sockets[i].flag == 1 &&
+    //                     sockets[i].state == LISTEN &&
+    //                     sockets[i].src == tHeader->destPort) {
+    //                     dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
+    //                     for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+    //                         dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+    //                     }
+                        
+    //                     // Create new socket for connection
+    //                     new_fd = call Transport.socket();
+                        
+    //                     dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
+    //                     for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+    //                         dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+    //                     }
 
-    //     // Process packet based on flags and current state
-    //     if (tHeader->flags & SYN) {
-    //         if (sock->state == LISTEN || sock->state == SYN_RCVD) {
-    //             // Server side SYN received
-    //             sock->lastAck = tHeader->seq + 1;
-    //             sock->lastSent = 0; // Initialize sequence number
+    //                     if (new_fd != (socket_t)-1) {
+    //                         sockets[new_fd].src = sockets[i].src;
+    //                         sockets[new_fd].dest.addr = package->src;
+    //                         sockets[new_fd].dest.port = tHeader->srcPort;
+    //                         sockets[new_fd].parentFd = i;
+    //                         sock = &sockets[new_fd];
+    //                         fd = new_fd;
+    //                         dbg(TRANSPORT_CHANNEL, "Created new socket %d for incoming connection\n", new_fd);
 
-    //             // Send SYN-ACK
-    //             tResponse.srcPort = sock->src;
-    //             tResponse.destPort = sock->dest.port;
-    //             tResponse.seq = sock->lastSent;
-    //             tResponse.ack = sock->lastAck;
-    //             tResponse.flags = SYN | ACK;
-    //             tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //             tResponse.length = 0;
+    //                         dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                             fd, sock->state, sock->flag, sock->src);
+    //                         sock->state = SYN_RCVD;
+    //                         dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                             fd, sock->state, sock->flag, sock->src);
 
-    //             makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
+    //                         // Send SYN-ACK
+    //                         tResponse.srcPort = sock->src;
+    //                         tResponse.destPort = sock->dest.port;
+    //                         tResponse.seq = sock->lastSent;
+    //                         tResponse.ack = tHeader->seq + 1;
+    //                         tResponse.flags = SYN | ACK;
+    //                         tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
+    //                         tResponse.length = 0;
 
-    //             call IP.send(&pck);
+    //                         makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
+    //                                 (uint8_t*)&tResponse, sizeof(transport));
 
-    //             dbg(TRANSPORT_CHANNEL, "Server sent SYN-ACK to %d:%d\n", sock->dest.addr, sock->dest.port);
-
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
-    //             sock->state = SYN_RCVD;
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //                         call IP.send(&pck);
+    //                         dbg(TRANSPORT_CHANNEL, "Server sent SYN-ACK to %d:%d\n", 
+    //                             sock->dest.addr, sock->dest.port);
+    //                         break;
+    //                     }
+    //                 }
+    //             }
     //         }
     //     }
-    //     else if (tHeader->flags & ACK) {
+
+    //     if (sock == NULL) return FAIL;
+
+    //     if (tHeader->flags & ACK) {
     //         if (sock->state == SYN_SENT) {
-    //             // Client side SYN-ACK received
-    //             sock->lastAck = tHeader->seq + 1;
-    //             sock->lastSent += 1;
-
-    //             // Send ACK
-    //             tResponse.srcPort = sock->src;
-    //             tResponse.destPort = sock->dest.port;
-    //             tResponse.seq = sock->lastSent;
-    //             tResponse.ack = sock->lastAck;
-    //             tResponse.flags = ACK;
-    //             tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //             tResponse.length = 0;
-
-    //             makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
-
-    //             call IP.send(&pck);
-
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //             sock->state = ESTABLISHED;
     //             signal Transport.clientConnected(fd);
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
-
-    //             dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", sock->dest.addr, sock->dest.port);
+    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
+                
+    //             dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", 
+    //                 sock->dest.addr, sock->dest.port);
     //         }
     //         else if (sock->state == SYN_RCVD) {
-    //             // Server side ACK received
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //             sock->state = ESTABLISHED;
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
 
-    //             dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", sock->dest.addr, sock->dest.port);
+    //             dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", 
+    //                 sock->dest.addr, sock->dest.port);
     //         }
     //         else if (sock->state == FIN_WAIT_1) {
-    //             // FIN acknowledgment received
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //             sock->state = FIN_WAIT_2;
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
-    //         }
-    //         else if (sock->state == CLOSE_WAIT) {
-    //             // Final ACK received
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=CLOSE_WAIT, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
-    //             sock->state = CLOSED;
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=CLOSE_WAIT, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
-    //         }
-    //         else {
-    //             // Update acknowledgment number and slide window
-    //             // Implement sliding window logic
+    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //         }
     //     }
     //     else if (tHeader->flags & FIN) {
     //         if (sock->state == ESTABLISHED) {
-    //             // FIN received from peer
-    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "Before, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //             sock->state = CLOSE_WAIT;
-    //             dbg(TRANSPORT_CHANNEL, "Middle, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "Middle, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
 
     //             // Send ACK for FIN
     //             tResponse.srcPort = sock->src;
@@ -632,52 +523,109 @@ implementation {
     //             tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
     //             tResponse.length = 0;
 
-    //             makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
+    //             makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
+    //                     (uint8_t*)&tResponse, sizeof(transport));
 
     //             call IP.send(&pck);
 
-    //             // Close the socket
     //             sock->state = CLOSED;
-    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", fd, sock->state, sock->flag, sock->src);
+    //             dbg(TRANSPORT_CHANNEL, "After, if tHeader=FIN, then socket %d: state-%d, flag-%d, src-%d\n", 
+    //                 fd, sock->state, sock->flag, sock->src);
     //         }
     //     }
-    //     else {
-    //         // Data packet received
-    //         if (sock->state == ESTABLISHED) {
+    //     // else if (sock->state == ESTABLISHED) {
+    //     //     // Handle data packet
+    //     //     uint16_t dataLen = tHeader->length;
+    //     //     uint8_t availableSpace;
 
-    //             // Store data in receive buffer
-    //             dataLen = tHeader->length;
+    //     //     if (dataLen > 0) {
+    //     //         dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", dataLen, TOS_NODE_ID);
 
-    //             if (dataLen > 0) {
-    //                 dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", dataLen, TOS_NODE_ID);
+    //     //         availableSpace = SOCKET_BUFFER_SIZE - sock->lastRcvd;
+    //     //         if (dataLen > availableSpace) {
+    //     //             dataLen = availableSpace;
+    //     //         }
 
-    //                 // Ensure we don't overflow the buffer
-    //                 availableSpace = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //                 if (dataLen > availableSpace) {
-    //                     dataLen = availableSpace;
-    //                 }
+    //     //         memcpy(sock->rcvdBuff + sock->lastRcvd, tHeader->payload, dataLen);
+    //     //         sock->lastRcvd += dataLen;
 
+    //     //         // Send ACK
+    //     //         tResponse.srcPort = sock->src;
+    //     //         tResponse.destPort = sock->dest.port;
+    //     //         tResponse.seq = sock->lastSent;
+    //     //         tResponse.ack = tHeader->seq + dataLen;
+    //     //         tResponse.flags = ACK;
+    //     //         tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
+    //     //         tResponse.length = 0;
+
+    //     //         makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, 
+    //     //                 (uint8_t*)&tResponse, sizeof(transport));
+
+    //     //         call IP.send(&pck);
+    //     //     }
+    //     // }
+    //     else if (sock->state == ESTABLISHED && !(tHeader->flags & (SYN|FIN))) {
+    //         pack responsePack;
+    //         uint16_t dataLen = tHeader->length;
+            
+    //         if (dataLen > 0) {
+    //             dbg(TRANSPORT_CHANNEL, "Transport.receive: Received %d bytes on socket %d\n", 
+    //                 dataLen, fd);
+                
+    //             // Check if this is the next expected sequence number
+    //             if (tHeader->seq == sock->rcvWindowBase) {
+    //                 // In-order segment, add to receive buffer
     //                 memcpy(sock->rcvdBuff + sock->lastRcvd, tHeader->payload, dataLen);
     //                 sock->lastRcvd += dataLen;
-
-    //                 // Update acknowledgment number
-    //                 sock->lastAck = tHeader->seq + dataLen;
-
-    //                 // Send ACK
-    //                 tResponse.srcPort = sock->src;
-    //                 tResponse.destPort = sock->dest.port;
-    //                 tResponse.seq = sock->lastSent;
-    //                 tResponse.ack = sock->lastAck;
-    //                 tResponse.flags = ACK;
-    //                 tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //                 tResponse.length = 0;
-
-    //                 makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
-
-    //                 call IP.send(&pck);
+    //                 sock->rcvWindowBase += dataLen;
+                    
+    //                 // Process any buffered out-of-order segments that are now in order
+    //                 while (sock->numOutOfOrder > 0) {
+    //                     // Check if first out-of-order segment is now in sequence
+    //                     if (sock->outOfOrderSeqNums[0] == sock->rcvWindowBase) {
+    //                         // Copy data and update window
+    //                         memcpy(sock->rcvdBuff + sock->lastRcvd, 
+    //                             sock->outOfOrderData[0], 
+    //                             strlen((char*)sock->outOfOrderData[0]));
+    //                         sock->lastRcvd += strlen((char*)sock->outOfOrderData[0]);
+    //                         sock->rcvWindowBase += strlen((char*)sock->outOfOrderData[0]);
+                            
+    //                         // Remove from out-of-order buffer
+    //                         for (i = 0; i < sock->numOutOfOrder - 1; i++) {
+    //                             memcpy(sock->outOfOrderData[i], 
+    //                                 sock->outOfOrderData[i+1],
+    //                                 strlen((char*)sock->outOfOrderData[i+1]));
+    //                             sock->outOfOrderSeqNums[i] = sock->outOfOrderSeqNums[i+1];
+    //                         }
+    //                         sock->numOutOfOrder--;
+    //                     } else {
+    //                         break;
+    //                     }
+    //                 }
+    //             } else if (tHeader->seq > sock->rcvWindowBase) {
+    //                 // Out-of-order segment, store it
+    //                 memcpy(sock->outOfOrderData[sock->numOutOfOrder], 
+    //                     tHeader->payload, dataLen);
+    //                 sock->outOfOrderSeqNums[sock->numOutOfOrder] = tHeader->seq;
+    //                 sock->numOutOfOrder++;
     //             }
+                
+    //             // Send ACK
+    //             tResponse.srcPort = sock->src;
+    //             tResponse.destPort = sock->dest.port;
+    //             tResponse.seq = sock->lastSent;
+    //             tResponse.ack = sock->rcvWindowBase;  // ACK next expected byte
+    //             tResponse.flags = ACK;
+    //             tResponse.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;  // Advertise available buffer
+    //             tResponse.length = 0;
+                
+    //             makePack(&responsePack, TOS_NODE_ID, sock->dest.addr, MAX_TTL,
+    //                     PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
+                
+    //             call IP.send(&responsePack);
     //         }
     //     }
+
     //     return SUCCESS;
     // }
 
@@ -704,44 +652,6 @@ implementation {
         return bytesToRead;
     }
 
-    // command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen) {
-    //     transport tHeader;
-    //     pack pck;
-        
-    //     uint16_t bytesAvailable;
-    //     uint16_t bytesToWrite;
-
-    //     socket_store_t* sock = getSocket(fd);
-    //     if (sock == NULL || sock->state != ESTABLISHED) return 0;
-
-    //     bytesAvailable = SOCKET_BUFFER_SIZE - sock->lastWritten;
-    //     bytesToWrite = (bufflen < bytesAvailable) ? bufflen : bytesAvailable;
-
-    //     memcpy(sock->sendBuff + sock->lastWritten, buff, bytesToWrite);
-    //     sock->lastWritten += bytesToWrite;
-
-    //     // Send data
-    //     tHeader.srcPort = sock->src;
-    //     tHeader.destPort = sock->dest.port;
-    //     tHeader.seq = sock->lastSent;
-    //     tHeader.ack = sock->lastAck;
-    //     tHeader.flags = 0; // Data packet
-    //     tHeader.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
-    //     tHeader.length = bytesToWrite;
-
-    //     memcpy(tHeader.payload, buff, bytesToWrite);
-
-    //     makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tHeader, sizeof(transport));
-
-    //     call IP.send(&pck);
-
-    //     sock->lastSent += bytesToWrite;
-
-    //     dbg(TRANSPORT_CHANNEL, "Transport.write: Socket %d, writing %d bytes\n", fd, bytesToWrite);
-
-    //     return bytesToWrite;
-    // }
-
     command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen) {
         transport tHeader;
         pack pck;
@@ -760,7 +670,7 @@ implementation {
         bytesToWrite = MIN(bufflen, sock->sendWindowSize - sock->numUnAcked);
         
         // Store data for potential retransmission
-        memcpy(sock->unAckedData[sock->numUnAcked], buff, bytesToWrite);
+        memcpy(&sock->unAckedData[sock->numUnAcked], buff, bytesToWrite);
         sock->unAckedSeqNums[sock->numUnAcked] = sock->lastSent;
         sock->numUnAcked++;
         
@@ -770,7 +680,7 @@ implementation {
         tHeader.seq = sock->lastSent;
         tHeader.ack = sock->lastAck;
         tHeader.flags = 0;
-        tHeader.window = sock->rcvWindowSize;  // Advertise receive window
+        tHeader.window = sock->rcvWindowSize;
         tHeader.length = bytesToWrite;
         memcpy(tHeader.payload, buff, bytesToWrite);
         
@@ -784,6 +694,7 @@ implementation {
         
         return bytesToWrite;
     }
+
     event void Timer.fired() {
         // Implement timer event handler
     }
