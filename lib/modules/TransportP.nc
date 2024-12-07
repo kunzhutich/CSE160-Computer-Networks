@@ -119,8 +119,6 @@ implementation {
         if (sock == NULL) return FAIL;
 
         sock->dest = *addr;
-        // sock->dest = addr->port;
-        // sock->destAddr = addr->addr;
 
         // Initialize sequence numbers
         sock->lastSent = 0;
@@ -135,12 +133,11 @@ implementation {
         tHeader.window = SOCKET_BUFFER_SIZE - sock->lastRcvd;
         tHeader.length = 0;
 
-        // makePack(&pck, TOS_NODE_ID, sock->destAddr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tHeader, sizeof(transport));
         makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL, PROTOCOL_TCP, 0, (uint8_t*)&tHeader, sizeof(transport));
 
         call IP.send(&pck);
 
-        // dbg(TRANSPORT_CHANNEL, "Client received SYN-ACK from %d:%d\n", sock->dest.addr, sock->dest.port);
+        dbg(TRANSPORT_CHANNEL, "Client received SYN-ACK from %d:%d\n", sock->dest.addr, sock->dest.port);
 
         dbg(TRANSPORT_CHANNEL, "Before CONNECT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
         sock->state = SYN_SENT;
@@ -393,7 +390,6 @@ implementation {
     }
 
     command error_t Transport.release(socket_t fd) {
-        // Implement as needed
         return SUCCESS;
     }
 

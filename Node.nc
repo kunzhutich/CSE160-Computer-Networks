@@ -180,7 +180,6 @@ implementation{
         }
 
         // Start a timer to accept connections periodically
-        // Implement a timer and its fired event
         call ServerTimer.startPeriodic(1000);
     }
     
@@ -190,37 +189,10 @@ implementation{
     event void Transport.clientConnected(socket_t fd) {
         dbg(TRANSPORT_CHANNEL, "Client socket %d connected\n", fd);
         client_socket_established = TRUE;
+
         // Start the client timer to write data periodically
-        call ClientTimer.startPeriodic(1000); // Adjust the period as needed
+        call ClientTimer.startPeriodic(1000);
     }
-
-    // event void ClientTimer.fired() {
-    //     uint8_t buffer[TRANSPORT_MAX_PAYLOAD_SIZE];
-    //     uint8_t bytesToSend = TRANSPORT_MAX_PAYLOAD_SIZE;
-    //     uint16_t i, bytesWritten;
-
-    //     if (!client_socket_established) {
-    //         dbg(TRANSPORT_CHANNEL, "Client socket not established yet\n");
-    //         return;
-    //     }
-
-    //     if (client_data_sent >= client_transfer_amount) {
-    //         // All data has been sent
-    //         dbg(TRANSPORT_CHANNEL, "All data sent by client\n");
-    //         call ClientTimer.stop();
-    //         return;
-    //     }
-
-    //     // Prepare data to send
-    //     for (i = 0; i < bytesToSend && client_data_sent < client_transfer_amount; i++) {
-    //         buffer[i] = (client_data_sent >> 8) & 0xFF; // High byte
-    //         buffer[++i] = client_data_sent & 0xFF;      // Low byte
-    //         client_data_sent++;
-    //     }
-
-    //     bytesWritten = call Transport.write(client_fd, buffer, i);
-    //     dbg(TRANSPORT_CHANNEL, "Client wrote %d bytes\n", bytesWritten);
-    // }
 
     event void ClientTimer.fired() {
         uint8_t buffer[TRANSPORT_MAX_PAYLOAD_SIZE];

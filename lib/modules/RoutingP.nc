@@ -102,7 +102,11 @@ implementation{
             return;
         }
 
-        call IP.send(myMsg);
+        // call IP.send(myMsg);
+        error_t result = call IP.send(myMsg);
+        if (result != SUCCESS) {
+            dbg(ROUTING_CHANNEL, "Routing: Failed to send packet to %d\n", myMsg->dest);
+        }
     }
 
     command void Routing.linkState(pack* myMsg) {
