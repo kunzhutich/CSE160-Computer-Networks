@@ -17,6 +17,12 @@ class TestSim:
     CMD_TEST_SERVER = 5
     # CMD_KILL = 6
     CMD_CLIENT_CLOSE = 7
+    CMD_HELLO = 10
+    CMD_MSG = 11
+    CMD_WHISPER = 12
+    CMD_LISTUSR = 13
+    CMD_SET_APP_SERVER = 14
+    CMD_SET_APP_CLIENT = 15
 
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL="command";
@@ -144,6 +150,33 @@ class TestSim:
     def cmdClientClose(self, src, dest, srcPort, destPort):
         payload = chr(dest) + chr(srcPort) + chr(destPort)
         self.sendCMD(self.CMD_CLIENT_CLOSE, src, payload)
+
+    # Project 4 functions:
+    def setAppServer(self, destination):
+        """Start a chat server on the specified node"""
+        self.sendCMD(self.CMD_SET_APP_SERVER, destination, "")
+    
+    def setAppClient(self, destination):
+        """Start a chat client on the specified node"""
+        self.sendCMD(self.CMD_SET_APP_CLIENT, destination, "")
+    
+    def hello(self, src, username, port):
+        """Connect a client to the server"""
+        payload = username + chr(0) + chr(port)  # Null terminate username
+        self.sendCMD(self.CMD_HELLO, src, payload)
+    
+    def msg(self, src, message):
+        """Send a broadcast message"""
+        self.sendCMD(self.CMD_MSG, src, message)
+    
+    def whisper(self, src, target, message):
+        """Send a private message"""
+        payload = target + chr(0) + message  # Null terminate target username
+        self.sendCMD(self.CMD_WHISPER, src, payload)
+    
+    def listUsers(self, src):
+        """Request list of connected users"""
+        self.sendCMD(self.CMD_LISTUSR, src, "")
 
 def main():
     s = TestSim();

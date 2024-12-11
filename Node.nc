@@ -34,17 +34,27 @@ module Node{
     uses interface Transport;
     uses interface Timer<TMilli> as ServerTimer;
     uses interface Timer<TMilli> as ClientTimer;
+
+    uses interface ChatClient;
+    uses interface ChatServer;
 }
 
 implementation{
     pack sendPackage;
 
+    // Project 3 stuff
     socket_t server_fd = -1;
     socket_t client_fd = -1;
     uint16_t client_transfer_amount = 0;
     uint16_t client_data_sent = 0;
     bool client_socket_established = FALSE;
 
+
+    // Project 4 stuff
+    bool isServer = FALSE;
+    bool isClient = FALSE;
+    uint8_t clientUsername[16];
+    uint8_t clientPort;
 
     // Prototypes
     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
@@ -69,35 +79,45 @@ implementation{
     event void AMControl.stopDone(error_t err){}
 
 
-    // from SKELETON CODE:
-    // event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
-    //     dbg(GENERAL_CHANNEL, "Packet Received\n");
-    //     if(len==sizeof(pack)){
-    //         pack* myMsg=(pack*) payload;
-    //         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
-    //         return msg;
-    //     }
-    //     dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
-    //     return msg;
-    // }
 
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
         pack* myMsg = (pack*) payload;
+
         if(len!=sizeof(pack)) {
             dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
             dbg(GENERAL_CHANNEL, "Dropping the Unknown Packet\n");
             return msg;         // Drop packet
-
         }
         else if (myMsg->protocol == PROTOCOL_LINKSTATE){
             call Routing.linkState(myMsg);
         }
+        // else if (myMsg->protocol == PROTOCOL_TCP) {
+        //     if (myMsg->dest == TOS_NODE_ID) {
+        //         dbg(GENERAL_CHANNEL, "TCP packet received at destination node %d\n", TOS_NODE_ID);
+        //         call Transport.receive(myMsg);
+        //     } else {
+        //         // Forward the TCP packet towards its destination
+        //         dbg(TRANSPORT_CHANNEL, "Forwarding TCP packet from %d to %d\n", myMsg->src, myMsg->dest);
+        //         call IP.send(myMsg);
+        //     }
+
+        //     if (isServer || isClient) {
+        //         call Transport.receive(myMsg);
+        //     }
+
+        //     if (myMsg->dest != TOS_NODE_ID) {
+        //         call IP.send(myMsg);
+        //     }
+        // }
         else if (myMsg->protocol == PROTOCOL_TCP) {
-            if (myMsg->dest == TOS_NODE_ID) {
-                dbg(GENERAL_CHANNEL, "TCP packet received at destination node %d\n", TOS_NODE_ID);
+            // Handle TCP packets
+            if (isServer || isClient) {
+                // If we're a server or client, process the packet through Transport
                 call Transport.receive(myMsg);
-            } else {
-                // Forward the TCP packet towards its destination
+            }
+            
+            // Forward if not destined for us (this happens after processing in case we need to handle and forward)
+            if (myMsg->dest != TOS_NODE_ID) {
                 dbg(TRANSPORT_CHANNEL, "Forwarding TCP packet from %d to %d\n", myMsg->src, myMsg->dest);
                 call IP.send(myMsg);
             }
@@ -278,9 +298,79 @@ implementation{
     }
 
 
-    event void CommandHandler.setAppServer(){}
 
-    event void CommandHandler.setAppClient(){}
+
+    // Add these new event handlers for CommandHandler:
+    event void CommandHandler.setAppServer() {
+        dbg(COMMAND_CHANNEL, "Starting Chat Server\n");
+        isServer = TRUE;
+        call ChatServer.start();
+    }
+
+    event void CommandHandler.setAppClient() {
+        dbg(COMMAND_CHANNEL, "Starting Chat Client\n");
+        isClient = TRUE;
+        strcpy((char*)clientUsername, "defaultUser");  // You can modify this as needed
+        clientPort = 50;  // Default client port
+    }
+
+    event void CommandHandler.handleHello(uint16_t src, uint8_t *username, uint8_t port) {
+        if (!isClient) {
+            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+            return;
+        }
+        call ChatClient.connect(username, port);
+    }
+
+    event void CommandHandler.handleMsg(uint16_t src, uint8_t *message) {
+        if (!isClient) {
+            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+            return;
+        }
+        call ChatClient.sendMessage(message);
+    }
+
+    event void CommandHandler.handleWhisper(uint16_t src, uint8_t *username, uint8_t *message) {
+        if (!isClient) {
+            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+            return;
+        }
+        call ChatClient.whisper(username, message);
+    }
+
+    event void CommandHandler.handleListUsers(uint16_t src) {
+        if (!isClient) {
+            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+            return;
+        }
+        call ChatClient.listUsers();
+    }
+
+    // Event handlers for ChatClient:
+    event void ChatClient.messageReceived(uint8_t *sender, uint8_t *message) {
+        dbg(GENERAL_CHANNEL, "Message from %s: %s\n", sender, message);
+    }
+
+    event void ChatClient.connectionComplete() {
+        dbg(GENERAL_CHANNEL, "Connected to chat server!\n");
+    }
+
+    event void ChatClient.userListReceived(uint8_t *users) {
+        dbg(GENERAL_CHANNEL, "Connected users: %s\n", users);
+    }
+
+    // Event handlers for ChatServer:
+    event void ChatServer.clientConnected(uint16_t clientId, uint8_t *username) {
+        dbg(GENERAL_CHANNEL, "Client %d connected with username: %s\n", clientId, username);
+    }
+
+    event void ChatServer.clientDisconnected(uint16_t clientId) {
+        dbg(GENERAL_CHANNEL, "Client %d disconnected\n", clientId);
+    }
+
+    event void ChatServer.messageReceived(uint16_t clientId, uint8_t *message) {
+        dbg(GENERAL_CHANNEL, "Message from client %d: %s\n", clientId, message);
+    }
 
     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
         Package->src = src;

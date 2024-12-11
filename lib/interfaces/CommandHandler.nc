@@ -10,4 +10,9 @@ interface CommandHandler{
     event void clientClose(uint16_t src, uint8_t dest, uint8_t srcPort, uint8_t destPort);
     event void setAppServer();
     event void setAppClient();
+
+    event void handleHello(uint16_t src, uint8_t *username, uint8_t port);
+    event void handleMsg(uint16_t src, uint8_t *message);
+    event void handleWhisper(uint16_t src, uint8_t *username, uint8_t *message);
+    event void handleListUsers(uint16_t src);
 }

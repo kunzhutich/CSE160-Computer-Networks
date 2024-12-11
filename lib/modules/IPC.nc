@@ -4,11 +4,11 @@ configuration IPC {
 
 implementation {
     components IPP;
-    components new SimpleSendC(AM_PACK);
-    components RoutingC;
-
     IP = IPP.IP;
-    
+
+    components new SimpleSendC(AM_PACK);
     IPP.Sender -> SimpleSendC;
+
+    components RoutingC;
     IPP.Routing -> RoutingC;
 }

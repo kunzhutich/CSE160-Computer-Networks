@@ -90,6 +90,8 @@ implementation{
     }
 
     command void Routing.routed(pack *myMsg){
+        error_t result;
+
         dbg(ROUTING_CHANNEL, "Routing: Received packet from %d to %d with protocol %d\n", myMsg->src, myMsg->dest, myMsg->protocol);
 
         if(myMsg->dest == TOS_NODE_ID && myMsg->protocol == PROTOCOL_PING) {
@@ -103,7 +105,7 @@ implementation{
         }
 
         // call IP.send(myMsg);
-        error_t result = call IP.send(myMsg);
+        result = call IP.send(myMsg);
         if (result != SUCCESS) {
             dbg(ROUTING_CHANNEL, "Routing: Failed to send packet to %d\n", myMsg->dest);
         }

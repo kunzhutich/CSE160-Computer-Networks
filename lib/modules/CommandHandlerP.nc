@@ -27,6 +27,12 @@ implementation{
             message_t *raw_msg;
             void *payload;
 
+            uint8_t *username;
+            uint8_t port;
+
+            uint8_t *target;
+            uint8_t *message;
+
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
             payload = call Packet.getPayload(raw_msg, sizeof(CommandMsg));
@@ -46,48 +52,90 @@ implementation{
 
             //Find out which command was called and call related command
             switch(commandID){
-            // A ping will have the destination of the packet as the first
-            // value and the string in the remainder of the payload
-            case CMD_PING:
-                dbg(COMMAND_CHANNEL, "Command Type: Ping\n");
-                signal CommandHandler.ping(buff[0], &buff[1]);
-                break;
+                // A ping will have the destination of the packet as the first
+                // value and the string in the remainder of the payload
+                case CMD_PING:
+                    dbg(COMMAND_CHANNEL, "Command Type: Ping\n");
+                    signal CommandHandler.ping(buff[0], &buff[1]);
+                    break;
 
-            case CMD_NEIGHBOR_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
-                signal CommandHandler.printNeighbors();
-                break;
+                case CMD_NEIGHBOR_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
+                    signal CommandHandler.printNeighbors();
+                    break;
 
-            case CMD_LINKSTATE_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Link State Dump\n");
-                signal CommandHandler.printLinkState();
-                break;
+                case CMD_LINKSTATE_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Link State Dump\n");
+                    signal CommandHandler.printLinkState();
+                    break;
 
-            case CMD_ROUTETABLE_DUMP:
-                dbg(COMMAND_CHANNEL, "Command Type: Route Table Dump\n");
-                signal CommandHandler.printRouteTable();
-                break;
+                case CMD_ROUTETABLE_DUMP:
+                    dbg(COMMAND_CHANNEL, "Command Type: Route Table Dump\n");
+                    signal CommandHandler.printRouteTable();
+                    break;
 
-            case CMD_TEST_SERVER:
-                dbg(COMMAND_CHANNEL, "Command Type: Testing Server\n");
-                signal CommandHandler.setTestServer(msg->dest, buff[0]);
-                break;
+                case CMD_TEST_SERVER:
+                    dbg(COMMAND_CHANNEL, "Command Type: Testing Server\n");
+                    signal CommandHandler.setTestServer(msg->dest, buff[0]);
+                    break;
 
-            case CMD_TEST_CLIENT:
-                dbg(COMMAND_CHANNEL, "Command Type: Testing Client\n");
-                signal CommandHandler.setTestClient(msg->dest, buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
-                break;
+                case CMD_TEST_CLIENT:
+                    dbg(COMMAND_CHANNEL, "Command Type: Testing Client\n");
+                    signal CommandHandler.setTestClient(msg->dest, buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
+                    break;
 
-            case CMD_CLIENT_CLOSE:
-                dbg(COMMAND_CHANNEL, "Command Type: Closing Client\n");
-                signal CommandHandler.clientClose(msg->dest, buff[0], buff[1], buff[2]);
-                break;
+                case CMD_CLIENT_CLOSE:
+                    dbg(COMMAND_CHANNEL, "Command Type: Closing Client\n");
+                    signal CommandHandler.clientClose(msg->dest, buff[0], buff[1], buff[2]);
+                    break;
 
-            default:
-                dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
-                break;
-            }
-            call Pool.put(raw_msg);
+                case CMD_SET_APP_SERVER:
+                    dbg(COMMAND_CHANNEL, "Command Type: Setting Up Server\n");
+                    signal CommandHandler.setAppServer();
+                    break;
+
+                case CMD_SET_APP_CLIENT:
+                    dbg(COMMAND_CHANNEL, "Command Type: Setting Up Client\n");
+                    signal CommandHandler.setAppClient();
+                    break;
+
+                case CMD_HELLO:
+                    // Extract username and port from payload
+                    // Format: username port
+                    username = buff;
+                    port = buff[strlen((char*)username) + 1];
+
+                    dbg(COMMAND_CHANNEL, "Command Type: Hello\n");
+                    
+                    signal CommandHandler.handleHello(msg->dest, username, port);
+                    break;
+
+                case CMD_MSG:
+                    dbg(COMMAND_CHANNEL, "Command Type: Message\n");
+                    signal CommandHandler.handleMsg(msg->dest, buff);
+                    break;
+
+                case CMD_WHISPER:
+                    // Extract username and message from payload
+                    // Format: username message
+                    target = buff;
+                    message = &buff[strlen((char*)target) + 1];
+                    
+                    dbg(COMMAND_CHANNEL, "Command Type: Whisper\n");
+
+                    signal CommandHandler.handleWhisper(msg->dest, target, message);
+                    break;
+
+                case CMD_LISTUSR:
+                    dbg(COMMAND_CHANNEL, "Command Type: List Users\n");
+                    signal CommandHandler.handleListUsers(msg->dest);
+                    break;
+
+                default:
+                    dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
+                    break;
+                }
+                call Pool.put(raw_msg);
         }
 
         if(! call Queue.empty()){

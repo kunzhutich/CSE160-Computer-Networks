@@ -52,4 +52,10 @@ implementation {
 
     components IPC;
     Node.IP -> IPC;
+
+    components ChatClientC;
+    Node.ChatClient -> ChatClientC;
+    
+    components ChatServerC;
+    Node.ChatServer -> ChatServerC;
 }
