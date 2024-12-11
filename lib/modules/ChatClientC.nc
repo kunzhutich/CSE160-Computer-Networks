@@ -11,6 +11,13 @@ implementation {
     // Wire Transport for TCP connections
     components TransportC;
     ChatClientP.Transport -> TransportC.Transport;
+    
+    components RoutingC;
+    ChatClientP.Routing -> RoutingC.Routing;
+
+    
+    components NDiscC;
+    ChatClientP.NDisc -> NDiscC.NDisc;
 
     // Wire components for sending messages
     components new SimpleSendC(AM_PACK);

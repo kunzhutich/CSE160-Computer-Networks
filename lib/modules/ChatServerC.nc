@@ -11,6 +11,12 @@ implementation {
     components TransportC;
     ChatServerP.Transport -> TransportC.Transport;
     
+    components RoutingC;
+    ChatServerP.Routing -> RoutingC.Routing;
+
+    components NDiscC;
+    ChatServerP.NDisc -> NDiscC.NDisc;
+    
     components new SimpleSendC(AM_PACK);
     ChatServerP.Sender -> SimpleSendC;
     
