@@ -28,10 +28,10 @@ implementation {
         socket_t fd;
 
         uint8_t j;
-        dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
-        for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
-            dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
-        }
+        // dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
+        // for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+        //     dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+        // }
 
         for (fd = 0; fd < MAX_NUM_OF_SOCKETS; fd++) {
             if (sockets[fd].flag == 0) {
@@ -56,10 +56,10 @@ implementation {
                 sockets[fd].rcvWindowSize = SOCKET_BUFFER_SIZE;
                 sockets[fd].numOutOfOrder = 0;
 
-                dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
-                for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
-                    dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
-                }
+                // dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
+                // for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
+                //     dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
+                // }
 
                 dbg(TRANSPORT_CHANNEL, "Socket %d allocated\n", fd);
 

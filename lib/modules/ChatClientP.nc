@@ -1,126 +1,3 @@
-// #include "../../includes/socket.h"
-// #include "../../includes/packet.h"
-// #include "../../includes/channels.h"
-
-// module ChatClientP {
-//     provides interface ChatClient;
-//     uses interface Transport;
-//     uses interface SimpleSend as Sender;
-//     uses interface Timer<TMilli> as ClientTimer;
-// }
-
-// implementation {
-//     // Client state
-//     socket_t client_socket;
-//     uint8_t username[16];
-//     uint8_t client_port;
-//     bool isConnected = FALSE;
-    
-//     // Buffer for receiving messages
-//     uint8_t receiveBuff[SOCKET_BUFFER_SIZE];
-    
-//     void formatMessage(uint8_t *buffer, const char *cmd, uint8_t *payload) {
-//         sprintf((char *)buffer, "%s %s\r\n", cmd, payload);
-//     }
-
-//     command error_t ChatClient.connect(uint8_t *uname, uint8_t port) {
-//         socket_addr_t addr;
-//         socket_addr_t bindAddr;
-//         uint8_t buffer[SOCKET_BUFFER_SIZE];
-        
-//         // Store username and port
-//         memcpy(username, uname, strlen((char *)uname) + 1);
-//         client_port = port;
-        
-//         // Create socket
-//         client_socket = call Transport.socket();
-        
-//         if (client_socket < 0) {
-//             dbg(TRANSPORT_CHANNEL, "Failed to create socket\n");
-//             return FAIL;
-//         }
-        
-//         // Set up connection to server (Node 1, Port 41)
-//         addr.addr = 1;  // Server node
-//         addr.port = 41; // Server port
-        
-//         // Bind to our port
-//         bindAddr.addr = TOS_NODE_ID;
-//         bindAddr.port = port;
-        
-//         if (call Transport.bind(client_socket, &bindAddr) != SUCCESS) {
-//             dbg(TRANSPORT_CHANNEL, "Failed to bind socket\n");
-//             return FAIL;
-//         }
-        
-//         // Connect to server
-//         if (call Transport.connect(client_socket, &addr) != SUCCESS) {
-//             dbg(TRANSPORT_CHANNEL, "Failed to connect\n");
-//             return FAIL;
-//         }
-        
-//         // Send hello message
-//         formatMessage(buffer, "hello", username);
-//         call Transport.write(client_socket, buffer, strlen((char *)buffer));
-        
-//         return SUCCESS;
-//     }
-    
-//     command error_t ChatClient.sendMessage(uint8_t *message) {
-//         uint8_t buffer[SOCKET_BUFFER_SIZE];
-
-//         if (!isConnected) return FAIL;
-        
-//         formatMessage(buffer, "msg", message);
-//         return call Transport.write(client_socket, buffer, strlen((char *)buffer));
-//     }
-    
-//     command error_t ChatClient.whisper(uint8_t *target, uint8_t *message) {
-//         uint8_t buffer[SOCKET_BUFFER_SIZE];
-//         uint8_t whisperCmd[SOCKET_BUFFER_SIZE];
-
-//         if (!isConnected) return FAIL;
-        
-//         sprintf((char *)whisperCmd, "whisper %s", target);
-//         formatMessage(buffer, whisperCmd, message);
-//         return call Transport.write(client_socket, buffer, strlen((char *)buffer));
-//     }
-    
-//     command error_t ChatClient.listUsers() {
-//         uint8_t buffer[SOCKET_BUFFER_SIZE];
-
-//         if (!isConnected) return FAIL;
-        
-//         sprintf((char *)buffer, "listusr\r\n");
-//         return call Transport.write(client_socket, buffer, strlen((char *)buffer));
-//     }
-    
-//     command error_t ChatClient.disconnect() {
-//         if (!isConnected) return SUCCESS;
-        
-//         isConnected = FALSE;
-//         return call Transport.close(client_socket);
-//     }
-
-//     event void Transport.clientConnected(socket_t clientSocket) {
-//         dbg(TRANSPORT_CHANNEL, "ChatClient: Connected to server on socket %d\n", clientSocket);
-//         isConnected = TRUE;
-//         signal ChatClient.connectionComplete();
-//     }
-
-
-//     event void ClientTimer.fired() {
-//         // Handle periodic client tasks if needed
-//         if (!isConnected) {
-//             // Retry connection logic could go here
-//         }
-//     }
-// }
-
-
-
-
-
 #include "../../includes/socket.h"
 #include "../../includes/packet.h"
 #include "../../includes/channels.h"
@@ -254,14 +131,34 @@ implementation {
         // return SUCCESS;
     }
     
+    // command error_t ChatClient.sendMessage(uint8_t *message) {
+    //     uint8_t buffer[SOCKET_BUFFER_SIZE];
+
+    //     if (!isConnected) return FAIL;
+        
+    //     formatMessage(buffer, "msg", message);
+    //     return call Transport.write(client_socket, buffer, strlen((char *)buffer));
+    // }
+
     command error_t ChatClient.sendMessage(uint8_t *message) {
         uint8_t buffer[SOCKET_BUFFER_SIZE];
+        uint16_t written;
 
         if (!isConnected) return FAIL;
-        
-        formatMessage(buffer, "msg", message);
-        return call Transport.write(client_socket, buffer, strlen((char *)buffer));
+
+        memset(buffer, 0, SOCKET_BUFFER_SIZE);
+        snprintf((char*)buffer, SOCKET_BUFFER_SIZE, "msg %s\r\n", message);
+
+        written = call Transport.write(client_socket, buffer, strlen((char*)buffer));
+        if (written == 0) {
+            dbg(CHAT_CHANNEL, "Node %d: Failed to send message\n", TOS_NODE_ID);
+            return FAIL;
+        }
+
+        dbg(CHAT_CHANNEL, "Node %d: Sent message (%d bytes): %s\n", TOS_NODE_ID, written, buffer);
+        return SUCCESS;
     }
+
     
     command error_t ChatClient.whisper(uint8_t *target, uint8_t *message) {
         uint8_t buffer[SOCKET_BUFFER_SIZE];
@@ -301,8 +198,8 @@ implementation {
         // Now send the hello message
         memset(buffer, 0, SOCKET_BUFFER_SIZE);
         sprintf((char*)buffer, "hello %s %d\r\n", username, client_port);
-        written = call Transport.write(client_socket, buffer, strlen((char*)buffer));
         
+        written = call Transport.write(client_socket, buffer, strlen((char*)buffer));
         if (written == 0) {
             dbg(CHAT_CHANNEL, "Node %d: Failed to send hello message after connection\n", TOS_NODE_ID);
         } else {
