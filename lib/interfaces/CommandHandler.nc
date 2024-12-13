@@ -8,8 +8,8 @@ interface CommandHandler{
     event void setTestServer(uint16_t src, uint8_t port);
     event void setTestClient(uint16_t src, uint8_t dest, uint8_t srcPort, uint8_t destPort, uint16_t transfer);
     event void clientClose(uint16_t src, uint8_t dest, uint8_t srcPort, uint8_t destPort);
-    event void setAppServer();
-    event void setAppClient();
+    event void setAppServer(uint16_t node);
+    event void setAppClient(uint16_t node);
 
     event void handleHello(uint16_t src, uint8_t *username, uint8_t port);
     event void handleMsg(uint16_t src, uint8_t *message);

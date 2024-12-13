@@ -301,76 +301,151 @@ implementation{
 
 
     // Add these new event handlers for CommandHandler:
-    event void CommandHandler.setAppServer() {
-        dbg(COMMAND_CHANNEL, "Starting Chat Server\n");
-        isServer = TRUE;
-        call ChatServer.start();
-    }
-
-    event void CommandHandler.setAppClient() {
-        dbg(COMMAND_CHANNEL, "Starting Chat Client\n");
-        isClient = TRUE;
-        strcpy((char*)clientUsername, "defaultUser");  // You can modify this as needed
-        clientPort = 50;  // Default client port
-    }
-
-    event void CommandHandler.handleHello(uint16_t src, uint8_t *username, uint8_t port) {
-        if (!isClient) {
-            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
-            return;
+    event void CommandHandler.setAppServer(uint16_t node) {
+        if (TOS_NODE_ID == node) {  // Only start server if we are the specified node
+            dbg(COMMAND_CHANNEL, "Starting Chat Server on node %d\n", node);
+            isServer = TRUE;
+            call ChatServer.start(node);  // Pass node ID to start
         }
-        call ChatClient.connect(username, port);
+    }
+
+    event void CommandHandler.setAppClient(uint16_t node) {
+        if (TOS_NODE_ID == node) {  // Only start client if we are the specified node
+            dbg(COMMAND_CHANNEL, "Starting Chat Client on node %d\n", node);
+            isClient = TRUE;
+            // strcpy((char*)clientUsername, "defaultUser");
+            // clientPort = 50;
+        }
+    }
+
+        event void CommandHandler.handleHello(uint16_t src, uint8_t *username, uint8_t port) {
+        if (TOS_NODE_ID == src && isClient) {
+            dbg(COMMAND_CHANNEL, "Connecting client with username: %s, port: %d\n", username, port);
+            call ChatClient.connect(username, port);
+        }
     }
 
     event void CommandHandler.handleMsg(uint16_t src, uint8_t *message) {
-        if (!isClient) {
-            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
-            return;
+        if (TOS_NODE_ID == src && isClient) {
+            dbg(COMMAND_CHANNEL, "Sending broadcast message: %s\n", message);
+            call ChatClient.sendMessage(message);
         }
-        call ChatClient.sendMessage(message);
     }
 
     event void CommandHandler.handleWhisper(uint16_t src, uint8_t *username, uint8_t *message) {
-        if (!isClient) {
-            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
-            return;
+        if (TOS_NODE_ID == src && isClient) {
+            dbg(COMMAND_CHANNEL, "Sending whisper to %s: %s\n", username, message);
+            call ChatClient.whisper(username, message);
         }
-        call ChatClient.whisper(username, message);
     }
 
     event void CommandHandler.handleListUsers(uint16_t src) {
-        if (!isClient) {
-            dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
-            return;
+        if (TOS_NODE_ID == src && isClient) {
+            dbg(COMMAND_CHANNEL, "Requesting user list\n");
+            call ChatClient.listUsers();
         }
-        call ChatClient.listUsers();
     }
 
-    // Event handlers for ChatClient:
+    // ChatClient events
     event void ChatClient.messageReceived(uint8_t *sender, uint8_t *message) {
-        dbg(GENERAL_CHANNEL, "Message from %s: %s\n", sender, message);
+        dbg(CHAT_CHANNEL, "Message from %s: %s\n", sender, message);
     }
 
     event void ChatClient.connectionComplete() {
-        dbg(GENERAL_CHANNEL, "Connected to chat server!\n");
+        dbg(CHAT_CHANNEL, "Connected to chat server!\n");
     }
 
     event void ChatClient.userListReceived(uint8_t *users) {
-        dbg(GENERAL_CHANNEL, "Connected users: %s\n", users);
+        dbg(CHAT_CHANNEL, "Connected users: %s\n", users);
     }
 
-    // Event handlers for ChatServer:
+    // ChatServer events
+    // event void ChatServer.clientConnected(uint16_t clientId, uint8_t *username) {
+    //     dbg(CHAT_CHANNEL, "Client %d connected with username: %s\n", clientId, username);
+    // }
+
+    // event void ChatServer.clientDisconnected(uint16_t clientId) {
+    //     dbg(CHAT_CHANNEL, "Client %d disconnected\n", clientId);
+    // }
+
+    // event void ChatServer.messageReceived(uint16_t clientId, uint8_t *message) {
+    //     dbg(CHAT_CHANNEL, "Message from client %d: %s\n", clientId, message);
+    // }
     event void ChatServer.clientConnected(uint16_t clientId, uint8_t *username) {
-        dbg(GENERAL_CHANNEL, "Client %d connected with username: %s\n", clientId, username);
+        if(isServer) {
+            dbg(CHAT_CHANNEL, "Server: Client %d connected as '%s'\n", clientId, username);
+        }
     }
 
     event void ChatServer.clientDisconnected(uint16_t clientId) {
-        dbg(GENERAL_CHANNEL, "Client %d disconnected\n", clientId);
+        if(isServer) {
+            dbg(CHAT_CHANNEL, "Server: Client %d disconnected\n", clientId);
+        }
     }
 
     event void ChatServer.messageReceived(uint16_t clientId, uint8_t *message) {
-        dbg(GENERAL_CHANNEL, "Message from client %d: %s\n", clientId, message);
+        if(isServer) {
+            dbg(CHAT_CHANNEL, "Server: Message from client %d: %s\n", clientId, message);
+        }
     }
+
+    // event void CommandHandler.handleHello(uint16_t src, uint8_t *username, uint8_t port) {
+    //     if (!isClient) {
+    //         dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+    //         return;
+    //     }
+    //     call ChatClient.connect(username, port);
+    // }
+
+    // event void CommandHandler.handleMsg(uint16_t src, uint8_t *message) {
+    //     if (!isClient) {
+    //         dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+    //         return;
+    //     }
+    //     call ChatClient.sendMessage(message);
+    // }
+
+    // event void CommandHandler.handleWhisper(uint16_t src, uint8_t *username, uint8_t *message) {
+    //     if (!isClient) {
+    //         dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+    //         return;
+    //     }
+    //     call ChatClient.whisper(username, message);
+    // }
+
+    // event void CommandHandler.handleListUsers(uint16_t src) {
+    //     if (!isClient) {
+    //         dbg(COMMAND_CHANNEL, "Error: Node is not initialized as client\n");
+    //         return;
+    //     }
+    //     call ChatClient.listUsers();
+    // }
+
+    // // Event handlers for ChatClient:
+    // event void ChatClient.messageReceived(uint8_t *sender, uint8_t *message) {
+    //     dbg(GENERAL_CHANNEL, "Message from %s: %s\n", sender, message);
+    // }
+
+    // event void ChatClient.connectionComplete() {
+    //     dbg(GENERAL_CHANNEL, "Connected to chat server!\n");
+    // }
+
+    // event void ChatClient.userListReceived(uint8_t *users) {
+    //     dbg(GENERAL_CHANNEL, "Connected users: %s\n", users);
+    // }
+
+    // // Event handlers for ChatServer:
+    // event void ChatServer.clientConnected(uint16_t clientId, uint8_t *username) {
+    //     dbg(GENERAL_CHANNEL, "Client %d connected with username: %s\n", clientId, username);
+    // }
+
+    // event void ChatServer.clientDisconnected(uint16_t clientId) {
+    //     dbg(GENERAL_CHANNEL, "Client %d disconnected\n", clientId);
+    // }
+
+    // event void ChatServer.messageReceived(uint16_t clientId, uint8_t *message) {
+    //     dbg(GENERAL_CHANNEL, "Message from client %d: %s\n", clientId, message);
+    // }
 
     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
         Package->src = src;

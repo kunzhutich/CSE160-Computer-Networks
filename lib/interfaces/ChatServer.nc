@@ -1,6 +1,6 @@
 interface ChatServer {
     // Start the chat server
-    command error_t start();
+    command error_t start(uint16_t node);
     
     // Stop the chat server
     command error_t stop();

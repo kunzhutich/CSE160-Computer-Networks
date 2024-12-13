@@ -27,11 +27,11 @@ implementation{
             message_t *raw_msg;
             void *payload;
 
-            uint8_t *username;
+            uint8_t username[16];
             uint8_t port;
-
-            uint8_t *target;
             uint8_t *message;
+            uint16_t i;
+            char *token;
 
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
@@ -49,6 +49,9 @@ implementation{
             dbg(COMMAND_CHANNEL, "A Command has been Issued.\n");
             buff = (uint8_t*) msg->payload;
             commandID = msg->id;
+
+            dbg(COMMAND_CHANNEL, "Processing command ID: %d\n", commandID);
+            dbg(COMMAND_CHANNEL, "Payload: %s\n", buff);
 
             //Find out which command was called and call related command
             switch(commandID){
@@ -89,45 +92,79 @@ implementation{
                     signal CommandHandler.clientClose(msg->dest, buff[0], buff[1], buff[2]);
                     break;
 
+
+                // Project 4
                 case CMD_SET_APP_SERVER:
                     dbg(COMMAND_CHANNEL, "Command Type: Setting Up Server\n");
-                    signal CommandHandler.setAppServer();
+                    signal CommandHandler.setAppServer(msg->dest);
                     break;
 
                 case CMD_SET_APP_CLIENT:
                     dbg(COMMAND_CHANNEL, "Command Type: Setting Up Client\n");
-                    signal CommandHandler.setAppClient();
+                    signal CommandHandler.setAppClient(msg->dest);
                     break;
 
                 case CMD_HELLO:
-                    // Extract username and port from payload
-                    // Format: username port
-                    username = buff;
-                    port = buff[strlen((char*)username) + 1];
-
-                    dbg(COMMAND_CHANNEL, "Command Type: Hello\n");
-                    
-                    signal CommandHandler.handleHello(msg->dest, username, port);
+                    dbg(COMMAND_CHANNEL, "Processing HELLO command\n");
+                    token = strtok((char*)buff, " ");  // Get "hello"
+                    if(token != NULL) {
+                        dbg(COMMAND_CHANNEL, "Found hello token\n");
+                        token = strtok(NULL, " ");     // Get username
+                        if(token != NULL) {
+                            strncpy((char*)username, token, 15);
+                            username[15] = '\0';
+                            dbg(COMMAND_CHANNEL, "Username: %s\n", username);
+                            
+                            token = strtok(NULL, "\r\n"); // Get port
+                            if(token != NULL) {
+                                port = atoi(token);
+                                dbg(COMMAND_CHANNEL, "Port: %d\n", port);
+                                signal CommandHandler.handleHello(msg->dest, username, port);
+                            } else {
+                                dbg(COMMAND_CHANNEL, "Error: No port found\n");
+                            }
+                        } else {
+                            dbg(COMMAND_CHANNEL, "Error: No username found\n");
+                        }
+                    } else {
+                        dbg(COMMAND_CHANNEL, "Error: Invalid hello format\n");
+                    }
                     break;
 
                 case CMD_MSG:
-                    dbg(COMMAND_CHANNEL, "Command Type: Message\n");
-                    signal CommandHandler.handleMsg(msg->dest, buff);
+                    dbg(COMMAND_CHANNEL, "Processing MSG command\n");
+                    token = strtok((char*)buff, " ");  // Get "msg"
+                    if(token != NULL) {
+                        message = (uint8_t*)strtok(NULL, "\r\n");
+                        if(message != NULL) {
+                            dbg(COMMAND_CHANNEL, "Message: %s\n", message);
+                            signal CommandHandler.handleMsg(msg->dest, message);
+                        } else {
+                            dbg(COMMAND_CHANNEL, "Error: No message content\n");
+                        }
+                    }
                     break;
 
                 case CMD_WHISPER:
-                    // Extract username and message from payload
-                    // Format: username message
-                    target = buff;
-                    message = &buff[strlen((char*)target) + 1];
-                    
-                    dbg(COMMAND_CHANNEL, "Command Type: Whisper\n");
+                    // Parse whisper command: whisper [username] [message]\r\n
+                    token = strtok((char*)buff, " ");  // Get "whisper"
 
-                    signal CommandHandler.handleWhisper(msg->dest, target, message);
+                    if(token != NULL) {
+                        token = strtok(NULL, " ");     // Get target username
+                        if(token != NULL) {
+                            strncpy((char*)username, token, 15);
+                            username[15] = '\0';
+                            
+                            message = (uint8_t*)strtok(NULL, "\r\n");
+                            if(message != NULL) {
+                                signal CommandHandler.handleWhisper(msg->dest, username, message);
+                            }
+                        }
+                    }
+
                     break;
 
                 case CMD_LISTUSR:
-                    dbg(COMMAND_CHANNEL, "Command Type: List Users\n");
                     signal CommandHandler.handleListUsers(msg->dest);
                     break;
 
