@@ -309,19 +309,19 @@ implementation{
         }
     }
 
-    event void CommandHandler.setAppClient(uint16_t node) {
-        if (TOS_NODE_ID == node) {  // Only start client if we are the specified node
-            dbg(COMMAND_CHANNEL, "Starting Chat Client on node %d\n", node);
+    event void CommandHandler.setAppClient(uint16_t node, uint8_t port) {
+        if (TOS_NODE_ID == node) {
+            dbg(COMMAND_CHANNEL, "Starting Chat Client on node %d with port %d\n", node, port);
             isClient = TRUE;
-            // strcpy((char*)clientUsername, "defaultUser");
-            // clientPort = 50;
+            
+            call ChatClient.start(node, port);
         }
     }
 
-        event void CommandHandler.handleHello(uint16_t src, uint8_t *username, uint8_t port) {
+    event void CommandHandler.handleHello(uint16_t src, uint8_t *username) { 
         if (TOS_NODE_ID == src && isClient) {
-            dbg(COMMAND_CHANNEL, "Connecting client with username: %s, port: %d\n", username, port);
-            call ChatClient.connect(username, port);
+            dbg(COMMAND_CHANNEL, "Connecting client with username: %s\n", username);
+            call ChatClient.connect(username);
         }
     }
 

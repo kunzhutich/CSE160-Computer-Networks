@@ -93,6 +93,7 @@ implementation {
 
     command socket_t Transport.accept(socket_t fd) {
         uint8_t i;
+        const socket_t INVALID_SOCKET = 255;
 
         socket_store_t* sock = getSocket(fd);
         if (sock == NULL || sock->state != LISTEN) return -1;
@@ -108,7 +109,7 @@ implementation {
                 return i;
             }
         }
-        return -1; // No pending connections
+        return INVALID_SOCKET; // No pending connections
     }
 
     command error_t Transport.connect(socket_t fd, socket_addr_t *addr) {
@@ -271,7 +272,24 @@ implementation {
                 dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", 
                     fd, sock->state, sock->flag, sock->src);
                 sock->state = ESTABLISHED;
+
+                // Send ACK
+                tResponse.srcPort = sock->src;
+                tResponse.destPort = sock->dest.port;
+                tResponse.seq = sock->lastSent;
+                tResponse.ack = tHeader->seq + 1;
+                tResponse.flags = ACK;
+                tResponse.window = SOCKET_BUFFER_SIZE;
+                tResponse.length = 0;
+                
+                makePack(&pck, TOS_NODE_ID, sock->dest.addr, MAX_TTL,
+                        PROTOCOL_TCP, 0, (uint8_t*)&tResponse, sizeof(transport));
+                
+                call IP.send(&pck);
+                
+                
                 signal Transport.clientConnected(fd);
+
                 dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_SENT, then socket %d: state-%d, flag-%d, src-%d\n", 
                     fd, sock->state, sock->flag, sock->src);
                 

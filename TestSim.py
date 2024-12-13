@@ -159,43 +159,10 @@ class TestSim:
         """Start a chat server on the specified node"""
         self.sendCMD(self.CMD_SET_APP_SERVER, destination, "")
     
-    def setAppClient(self, destination):
-        """Start a chat client on the specified node"""
-        self.sendCMD(self.CMD_SET_APP_CLIENT, destination, "")
-    
-    # def hello(self, src, username, port):
-    #     """Connect a client to the server"""
-    #     payload = username + chr(0) + chr(port)  # Null terminate username
-    #     self.sendCMD(self.CMD_HELLO, src, payload)
-    
-    # def msg(self, src, message):
-    #     """Send a broadcast message"""
-    #     self.sendCMD(self.CMD_MSG, src, message)
-    
-    # def whisper(self, src, target, message):
-    #     """Send a private message"""
-    #     payload = target + chr(0) + message  # Null terminate target username
-    #     self.sendCMD(self.CMD_WHISPER, src, payload)
-    
-    # def listUsers(self, src):
-    #     """Request list of connected users"""
-    #     self.sendCMD(self.CMD_LISTUSR, src, "")
-
-    # def hello(self, src, username, port):
-    #     """Connect a client to the server"""
-    #     self.sendCMD(self.CMD_HELLO, src, username + " " + str(port) + "\r\n")
-
-    # def msg(self, src, message):
-    #     """Send a broadcast message"""
-    #     self.sendCMD(self.CMD_MSG, src, message + "\r\n")
-
-    # def whisper(self, src, target, message):
-    #     """Send a private message"""
-    #     self.sendCMD(self.CMD_WHISPER, src, target + " " + message + "\r\n")
-
-    # def listUsers(self, src):
-    #     """Request list of connected users"""
-    #     self.sendCMD(self.CMD_LISTUSR, src, "listusr\r\n")
+    def setAppClient(self, destination, port):
+        """Start a chat client on the specified node with given port"""
+        payload = str(port)
+        self.sendCMD(self.CMD_SET_APP_CLIENT, destination, payload)
 
     def relayMsg(self, src, message):
         """Send a broadcast message"""
@@ -208,9 +175,9 @@ class TestSim:
         payload = "whisper " + target + " " + message + "\r\n"
         self.sendCMD(self.CMD_WHISPER, src, payload)
 
-    def hello(self, src, username, port):
-        """Connect a client to the server"""
-        payload = "hello " + username + " " + str(port) + "\r\n"
+    def hello(self, src, username):
+        """Connect a client to the server with username"""
+        payload = "hello " + username + "\r\n"
         self.sendCMD(self.CMD_HELLO, src, payload)
 
     def listUsers(self, src):

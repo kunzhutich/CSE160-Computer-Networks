@@ -101,28 +101,24 @@ implementation{
 
                 case CMD_SET_APP_CLIENT:
                     dbg(COMMAND_CHANNEL, "Command Type: Setting Up Client\n");
-                    signal CommandHandler.setAppClient(msg->dest);
+                    signal CommandHandler.setAppClient(msg->dest, atoi((char*)buff));
                     break;
 
                 case CMD_HELLO:
                     dbg(COMMAND_CHANNEL, "Processing HELLO command\n");
                     token = strtok((char*)buff, " ");  // Get "hello"
+
                     if(token != NULL) {
                         dbg(COMMAND_CHANNEL, "Found hello token\n");
-                        token = strtok(NULL, " ");     // Get username
+
+                        token = strtok(NULL, "\r\n");     // Get username
                         if(token != NULL) {
                             strncpy((char*)username, token, 15);
                             username[15] = '\0';
-                            dbg(COMMAND_CHANNEL, "Username: %s\n", username);
                             
-                            token = strtok(NULL, "\r\n"); // Get port
-                            if(token != NULL) {
-                                port = atoi(token);
-                                dbg(COMMAND_CHANNEL, "Port: %d\n", port);
-                                signal CommandHandler.handleHello(msg->dest, username, port);
-                            } else {
-                                dbg(COMMAND_CHANNEL, "Error: No port found\n");
-                            }
+                            dbg(COMMAND_CHANNEL, "Username: %s\n", username);
+
+                            signal CommandHandler.handleHello(msg->dest, username);  // Remove port
                         } else {
                             dbg(COMMAND_CHANNEL, "Error: No username found\n");
                         }
