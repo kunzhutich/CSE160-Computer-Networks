@@ -73,9 +73,9 @@ implementation {
         socket_store_t* sock = getSocket(fd);
         if (sock == NULL) return FAIL;
 
-        dbg(TRANSPORT_CHANNEL, "Before BIND | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "Before BIND | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
         sock->src = addr->port;
-        dbg(TRANSPORT_CHANNEL, "After BIND | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "After BIND | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
 
         return SUCCESS;
     }
@@ -84,9 +84,9 @@ implementation {
         socket_store_t* sock = getSocket(fd);
         if (sock == NULL) return FAIL;
 
-        dbg(TRANSPORT_CHANNEL, "Before LISTEN | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "Before LISTEN | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
         sock->state = LISTEN;
-        dbg(TRANSPORT_CHANNEL, "After LISTEN | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "After LISTEN | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
 
         return SUCCESS;
     }
@@ -102,9 +102,9 @@ implementation {
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
             if (sockets[i].flag == 1 && sockets[i].parentFd == fd && sockets[i].state == SYN_RCVD) {
 
-                dbg(TRANSPORT_CHANNEL, "Before ACCEPT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+                // dbg(TRANSPORT_CHANNEL, "Before ACCEPT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
                 sockets[i].state = ESTABLISHED;
-                dbg(TRANSPORT_CHANNEL, "After ACCEPT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+                // dbg(TRANSPORT_CHANNEL, "After ACCEPT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
 
                 return i;
             }
@@ -138,11 +138,11 @@ implementation {
 
         call IP.send(&pck);
 
-        dbg(TRANSPORT_CHANNEL, "Client received SYN-ACK from %d:%d\n", sock->dest.addr, sock->dest.port);
+        // dbg(TRANSPORT_CHANNEL, "Client received SYN-ACK from %d:%d\n", sock->dest.addr, sock->dest.port);
 
-        dbg(TRANSPORT_CHANNEL, "Before CONNECT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "Before CONNECT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
         sock->state = SYN_SENT;
-        dbg(TRANSPORT_CHANNEL, "After CONNECT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
+        // dbg(TRANSPORT_CHANNEL, "After CONNECT | socket %d: state-%d, flag-%d, src-%d\n", fd, sockets[fd].state, sockets[fd].flag, sockets[fd].src);
 
         // Start timer for retransmission if necessary
 
@@ -193,8 +193,8 @@ implementation {
         socket_t fd = -1;
         uint8_t i, j;
 
-        dbg(TRANSPORT_CHANNEL, "Transport: Received packet with flags %d from %d:%d to %d:%d\n", 
-            tHeader->flags, package->src, tHeader->srcPort, package->dest, tHeader->destPort);
+        // dbg(TRANSPORT_CHANNEL, "Transport: Received packet with flags %d from %d:%d to %d:%d\n", 
+            // tHeader->flags, package->src, tHeader->srcPort, package->dest, tHeader->destPort);
 
         // First try to find an established socket
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
@@ -215,7 +215,7 @@ implementation {
                     sockets[i].state == LISTEN &&
                     sockets[i].src == tHeader->destPort) {
                     
-                    dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
+                    // dbg(TRANSPORT_CHANNEL, "Listing socket states before Transport.socket: \n");
                     for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
                         dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
                     }
@@ -223,7 +223,7 @@ implementation {
                     // Create new socket for connection
                     new_fd = call Transport.socket();
                     
-                    dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
+                    // dbg(TRANSPORT_CHANNEL, "Listing socket states after Transport.socket: \n");
                     for (j = 0; j < MAX_NUM_OF_SOCKETS; j++) {
                         dbg(TRANSPORT_CHANNEL, "        Socket %d: state %d, flag %d\n", j, sockets[j].state, sockets[j].flag);
                     }
@@ -237,11 +237,11 @@ implementation {
                         fd = new_fd;
                         dbg(TRANSPORT_CHANNEL, "Created new socket %d for incoming connection\n", new_fd);
 
-                        dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
-                            fd, sock->state, sock->flag, sock->src);
+                        // dbg(TRANSPORT_CHANNEL, "Before, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+                            // fd, sock->state, sock->flag, sock->src);
                         sock->state = SYN_RCVD;
-                        dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
-                            fd, sock->state, sock->flag, sock->src);
+                        // dbg(TRANSPORT_CHANNEL, "After, if tHeader=SYN, then socket %d: state-%d, flag-%d, src-%d\n", 
+                            // fd, sock->state, sock->flag, sock->src);
 
                         // Send SYN-ACK
                         tResponse.srcPort = sock->src;
@@ -297,21 +297,21 @@ implementation {
                     sock->dest.addr, sock->dest.port);
             }
             else if (sock->state == SYN_RCVD) {
-                dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
-                    fd, sock->state, sock->flag, sock->src);
+                // dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
+                    // fd, sock->state, sock->flag, sock->src);
                 sock->state = ESTABLISHED;
-                dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
-                    fd, sock->state, sock->flag, sock->src);
+                // dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=SYN_RCVD, then socket %d: state-%d, flag-%d, src-%d\n", 
+                    // fd, sock->state, sock->flag, sock->src);
                 
                 dbg(TRANSPORT_CHANNEL, "Connection established with %d:%d\n", 
                     sock->dest.addr, sock->dest.port);
             }
             else if (sock->state == FIN_WAIT_1) {
-                dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
-                    fd, sock->state, sock->flag, sock->src);
+                // dbg(TRANSPORT_CHANNEL, "Before, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
+                    // fd, sock->state, sock->flag, sock->src);
                 sock->state = FIN_WAIT_2;
-                dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
-                    fd, sock->state, sock->flag, sock->src);
+                // dbg(TRANSPORT_CHANNEL, "After, if tHeader=ACK && sockState=FIN_WAIT_1, then socket %d: state-%d, flag-%d, src-%d\n", 
+                    // fd, sock->state, sock->flag, sock->src);
             }
         }
         // Handle FIN packets
@@ -424,7 +424,7 @@ implementation {
         memcpy(buff, sock->rcvdBuff + sock->lastRead, bytesToRead);
         sock->lastRead += bytesToRead;
 
-        dbg(TRANSPORT_CHANNEL, "Transport.read: Socket %d, read %d bytes\n", fd, bytesToRead);
+        // dbg(TRANSPORT_CHANNEL, "Transport.read: Socket %d, read %d bytes\n", fd, bytesToRead);
 
         return bytesToRead;
     }

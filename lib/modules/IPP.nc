@@ -24,8 +24,8 @@ implementation {
         }
 
         // Forward packet to next hop
-        dbg(GENERAL_CHANNEL, "IP: Forwarding packet dest=%d via next_hop=%d\n", 
-            packet->dest, nextHop);
+        // dbg(GENERAL_CHANNEL, "IP: Forwarding packet dest=%d via next_hop=%d\n", 
+            // packet->dest, nextHop);
         
         // Decrement TTL
         if (packet->TTL <= 0) {

@@ -118,7 +118,7 @@ implementation{
             
             // Forward if not destined for us (this happens after processing in case we need to handle and forward)
             if (myMsg->dest != TOS_NODE_ID) {
-                dbg(TRANSPORT_CHANNEL, "Forwarding TCP packet from %d to %d\n", myMsg->src, myMsg->dest);
+                // dbg(TRANSPORT_CHANNEL, "Forwarding TCP packet from %d to %d\n", myMsg->src, myMsg->dest);
                 call IP.send(myMsg);
             }
         }

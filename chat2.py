@@ -24,7 +24,6 @@ def main():
     s.addChannel(s.TRANSPORT_CHANNEL)
 
     # Let the network stabilize
-    print("Letting network initialize...")
     s.runTime(20)
 
     # Start server
@@ -33,34 +32,33 @@ def main():
     s.runTime(10)  # Give server time to start
 
     # Start and connect first client (with port 50)
-    print("Starting first client on node 2...")
     s.setAppClient(2, 50)
     s.runTime(10)
-    print("Connecting alice...")
     s.hello(2, "alice")
     s.runTime(10)
 
     # Start and connect second client (with port 51)
-    print("Starting second client on node 3...")
     s.setAppClient(3, 51)
     s.runTime(10)
-    print("Connecting bob...")
     s.hello(3, "bob")
     s.runTime(10)
+    
+    s.setAppClient(4, 52)
+    s.runTime(10)
+    s.hello(4, "john")
+    s.runTime(10)
+    s
 
     # Test chat functionality
-    print("Testing chat functionality...")
     s.runTime(10)  # Wait a bit before starting tests
     
-    print("Alice sending broadcast message...")
-    s.relayMsg(2, "Hello everyone!")
+    s.relayMsg(2, "Hello everyone!\r\n")
     s.runTime(10)
     
-    print("Alice whispering to bob...")
-    s.whisper(2, "bob", "Hey Bob!")
+    s.whisper(2, "bob", "Hey Bob!\r\n")
     s.runTime(10)
     
-    print("Requesting user list...")
+
     s.listUsers(2)
     s.runTime(10)
 

@@ -283,7 +283,6 @@ implementation {
 
         // Store username
         memcpy(username, uname, strlen((char *)uname) + 1);
-
         dbg(CHAT_CHANNEL, "Node %d attempting to connect as user '%s' on port %d\n", 
             TOS_NODE_ID, uname, client_port);
 
@@ -322,7 +321,7 @@ implementation {
         if (!isConnected) return FAIL;
 
         memset(buffer, 0, SOCKET_BUFFER_SIZE);
-        snprintf((char*)buffer, SOCKET_BUFFER_SIZE, "msg %s\r\n", message);
+        snprintf((char*)buffer, SOCKET_BUFFER_SIZE, "msg %s", message);
 
         written = call Transport.write(client_socket, buffer, strlen((char*)buffer));
         if (written == 0) {
@@ -348,12 +347,26 @@ implementation {
     
     command error_t ChatClient.listUsers() {
         uint8_t buffer[SOCKET_BUFFER_SIZE];
+        uint16_t written;
 
-        if (!isConnected) return FAIL;
-        
+        if (!isConnected) {
+            dbg(CHAT_CHANNEL, "Cannot list users, not connected to server\n");
+            return FAIL;
+        }
+
+        // Prepare the list users command
         sprintf((char *)buffer, "listusr\r\n");
-        return call Transport.write(client_socket, buffer, strlen((char *)buffer));
-    }
+        
+        // Send the command to the server
+        written = call Transport.write(client_socket, buffer, strlen((char *)buffer));
+        if (written == 0) {
+            dbg(CHAT_CHANNEL, "Failed to send 'listusr' command\n");
+            return FAIL;
+        }
+        dbg(CHAT_CHANNEL, "Sent 'listusr' command (%d bytes)\n", written);
+        return SUCCESS;
+}
+
     
     command error_t ChatClient.disconnect() {
         if (!isRunning) return SUCCESS;
@@ -398,14 +411,14 @@ implementation {
                 
                 // Try to connect
                 if (call Transport.connect(client_socket, &addr) == SUCCESS) {
-                    dbg(TRANSPORT_CHANNEL, "Node %d: Retrying connection to server\n", TOS_NODE_ID);
+                // dbg(TRANSPORT_CHANNEL, "Node %d: Retrying connection to server\n", TOS_NODE_ID);
                 }
             }
         } else if (isConnected) {
             // Maybe add heartbeat/keepalive functionality here
             // Or check if we're still connected to server
-            dbg(TRANSPORT_CHANNEL, "Node %d: Connected and running (socket: %d)\n", 
-                TOS_NODE_ID, client_socket);
+            // dbg(TRANSPORT_CHANNEL, "Node %d: Connected and running (socket: %d)\n", 
+            //     TOS_NODE_ID, client_socket);
         }
     }
 }
